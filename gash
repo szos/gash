@@ -1,0 +1,243 @@
+#!/usr/bin/guile \
+-l gash-base-lib
+!#
+
+(use-modules (ice-9 format)
+	     (ice-9 popen)
+	     (ice-9 rdelim)
+	     (ice-9 textual-ports))
+
+(load-extension
+ ;; (format #f "~a/lib-c-funcs.so" (getcwd))
+ "/home/shozo/dev/gash/libgash.so"
+ "init_gash_c")
+
+(define home-directory 
+  (let* ((port (open-input-pipe "echo $HOME"))
+  	 (dir (read-line port)))
+    (close-port port)
+    dir))
+
+(define user-at-host
+  (let* ((user-port (open-input-pipe "echo $USER"))
+	 (host-port (open-input-pipe "hostname"))
+	 (user (read-line user-port))
+	 (host (read-line host-port)))
+    (close-port user-port)
+    (close-port host-port)
+    (format #f "~a@~a" user host)))
+
+(define (directory-contents dir)
+  (let ((port (open-input-pipe
+	       (if (char=? (string-ref dir 0) #\/)
+		   (format #f "ls -a ~a" dir)
+		   (format #f "ls -a ~a/~a" (getcwd) dir)))))
+    (let gather ((line (read-line port))
+		 (accum '()))
+      (if (eof-object? line)
+	  (begin (close-port port) (reverse accum))
+	  (gather (read-line port) (cons line accum))))))
+
+(define (string-app-list string-list)
+  (apply string-append string-list))
+
+;;; parse string for guile to evaluate. 
+
+(define* (walk-string-for-guile string #:optional (location
+						   (string-index string #\§)))
+  (let ((first-instance location))
+    (let loop ((char-list (string->list (substring string (+ 1 first-instance))))
+	       (accum '())
+	       (paren-counter 0)
+	       (length 0))
+      ;; (display char-list) (newline)
+      (cond ((null? char-list)
+	     ;; (echo "null char-list")
+	     ;; (if (equal? paren-counter 1)
+	     ;; 	 #f)
+	     (+ 1 length))
+	    ((char=? (car char-list) #\()
+	     ;; (echo "found an opening paren")
+	     (loop (cdr char-list) (cons (car char-list) accum)
+		   (+ paren-counter 1) (+ length 1)))
+	    ((char=? (car char-list) #\))
+	     ;; (echo "found a closing paren")
+	     (loop (cdr char-list) (cons (car char-list) accum)
+		   (- paren-counter 1) (+ length 1)))
+	    ((equal? paren-counter 0)
+	     ;; (echo "paren counter is 0")
+	     (+ 1 length))
+	    (else
+	     (loop (cdr char-list) (cons (car char-list) accum)
+		   paren-counter (+ length 1)))))))
+
+(define (extract-scheme-strings string)
+  (if (not (string-index string #\§))
+      (list string)
+      (let loop ((ref (string-index string #\§))
+		 (tail 0)
+		 (acc '()))
+	(cond ((not ref)
+	       (reverse (cons (substring string tail) acc)))
+	      (else
+	       (let* ((end-scheme (walk-string-for-guile string ref))
+		      (scheme-string
+		       (substring string ref
+				  (+ ref end-scheme)))
+		      (pre-string (substring string tail ref)))
+		 (loop (string-index string #\§ (+ ref 1))
+		       (+ ref end-scheme)
+		       (cons scheme-string (cons pre-string acc)))))))))
+
+(define (eval/replace-scheme-string string-list)
+  (let loop ((strings string-list)
+	     (acc '()))
+    (cond ((null? strings)
+	   (reverse acc))
+	  ((string=? (car strings) "")
+	   (loop (cdr strings) (cons (car strings) acc)))
+	  ((char=? (string-ref (car strings) 0) #\§)
+	   (let ((result
+		  (eval-string (substring (car strings) 1))))
+	     (loop (cdr strings)
+		   (cons
+		    (if (string? result)
+			result
+			"")
+		    acc))))
+	  (else
+	   (loop (cdr strings) (cons (car strings) acc))))))
+
+;;; end guile parsing.
+
+;; (define-macro ($ string))
+
+(define *builtins-alist*
+  `(("cd-old" . ,(lambda (lst)
+	       (cond ((null? (cdr lst))
+		      (chdir home-directory)
+		      '())
+		     ((string=? (second lst) "~/")
+		      (begin (chdir home-directory)
+			     (cddr lst)))
+		     ((directory? (cadr lst))
+		      (begin (chdir (cadr lst))
+			     (cddr lst)))
+		     ;; ((not (directory? (cadr lst)))
+		     ;;  (let loop ((dir (cadr lst))
+		     ;; 		 (token-list (cddr lst)))
+		     ;; 	(echo "checking directory: ")
+		     ;; 	(echo dir)
+		     ;; 	(cond ((null? token-list)
+		     ;; 	       (cddr lst))
+		     ;; 	      ((directory? dir)
+		     ;; 	       (chdir dir)
+		     ;; 	       lst)
+		     ;; 	      (else
+		     ;; 	       (loop (string-append dir (car lst))
+		     ;; 		     (cdr lst))))))
+		     (else
+		      (echo "ERROR:  Not a directory")
+		      '()))))
+    ("cd" . ,(lambda (lst)
+		(cond ((null? (cdr lst))
+		       (chdir home-directory)
+		       '())
+		      ((string=? (second lst) "~/")
+		       (begin (chdir home-directory)
+			      (cddr lst)))
+		      ((string=? (second lst) "")
+		       (begin (chdir home-directory)
+			      '()))
+		      ((directory? (cadr lst))
+		       (begin (chdir (cadr lst))
+			      (cddr lst)))
+		      (else
+		       (let cd-loop ((dir-str (second lst))
+				     (rem-str (cddr lst)))
+			 (cond ((null? rem-str)
+				;; (display "in null? dir-str: ")(echo dir-str)
+				(when (directory? dir-str)
+				  (chdir dir-str))
+				'())
+			       ((directory? dir-str)
+                                ;; (display "in dir? dir-str: ")(echo dir-str)
+				(chdir (cadr lst)) (cdr rem-str))
+			       (else
+				;; (echo dir-str)
+				(cd-loop
+				 (string-append dir-str " " (car rem-str))
+				 (cdr rem-str)))))))))
+    ("exit" . ,(lambda (lst)
+		 (exit 0)))))
+
+(define (define-builtin name lambda)
+  (set! *builtins-alist* (cons `(,name . ,lambda) *builtins-alist*)))
+
+(define *base-shorthand* ; this is for resetting the shorthand alist, should
+  '(("ls" . "ls --color"))) ; one put to many entries.
+
+(define *shorthand-alist*
+  '(("ls" . "ls --color")))
+
+(define (define-shorthand from to)
+  (set! *shorthand-alist* (cons `(,from . ,to) *shorthand-alist*)))
+
+(define (replace-shorthand str-list)
+  (let loop ((lst str-list)
+	     (accum '()))
+    (if (null? lst)
+	(reverse accum)
+	;; (join-strings  " ")
+	(let ((shorthand? (assoc (car lst) *shorthand-alist*)))
+	  (if shorthand?
+	      (loop (cdr lst) (cons (cdr shorthand?) accum))
+	      (loop (cdr lst) (cons (car lst) accum)))))))
+
+(define (generate-prompt)
+  (let ((curdir (getcwd)))
+    (if (string=? curdir home-directory)
+	(format #f "~a ~a" user-at-host "~")
+	(let ((p (substring curdir (+ 1 (string-index-right curdir #\/)))))
+	  (format #f "~a ~a" user-at-host p)))))
+
+(define (read-and-interpret)
+  ;; (echo "main-loop")
+  (let ((prompt ;; (get-string-from-user)
+	 (read-with-prompt (generate-prompt))
+	 ))
+    ;; (display "prompted text: ") (echo prompt)
+    (if (string=? prompt "")
+	(read-and-interpret)
+	(let* ((scheme-replaced
+		(string-app-list
+		 (eval/replace-scheme-string (extract-scheme-strings prompt))))
+	       (tokens (string-split scheme-replaced #\space))
+	       (func (assoc (car tokens)
+			    *builtins-alist*)))
+	  ;; (display "scheme replaced string: ")(echo scheme-replaced)
+	  (if func ;; if the first element is a builtin
+	      (let ((strs ((cdr func) tokens)))
+		(unless (null? strs)
+		  (system (join-strings strs " "))))
+	      (let ((longhand (replace-shorthand tokens)))
+		(system (join-strings longhand " "))))))))
+
+(define (loop-handler)
+  (with-throw-handler #t
+    (lambda ()
+      (while 1
+	(read-and-interpret)))
+    (lambda (key . args)
+      (cond ((equal? key 'quit)
+	     (exit))
+	    (else
+	     (display-color 1 "ERROR:  ")
+	     (display key) (display ", ") (echo args)
+	     (loop-handler))))))
+
+(define (main)
+  (load (string-append home-directory "/.gashrc-test"))
+  (loop-handler))
+
+(main)
