@@ -7,10 +7,13 @@
 	     (ice-9 rdelim)
 	     (ice-9 textual-ports))
 
-(load-extension
- ;; (format #f "~a/lib-c-funcs.so" (getcwd))
- "/home/shozo/dev/gash/libgash.so"
- "init_gash_c")
+(let ((extension-path (format #f "~a/libgash.so" (getcwd)))
+      (init-function "init_gash_c"))
+  (load-extension extension-path init-function))
+;; (load-extension
+;;  ;; (format #f "~a/lib-c-funcs.so" (getcwd))
+;;  "/home/shozo/dev/gash/libgash.so"
+;;  "init_gash_c")
 
 (define home-directory 
   (let* ((port (open-input-pipe "echo $HOME"))
