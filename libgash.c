@@ -75,8 +75,14 @@ int get_string_from_user_with_prompt(char* str, char* prompt)
   char* buffer;
   char* directory;
   // char* username = getenv("USER");
-  char* printer = cat3("[\033[38;5;6m", prompt, "\033[0m]» ");
+  // readline uses \001 and \002 to determine what should be counted when
+  // counting the prompt characters. 
+  char* printer = cat3("[\001\033[38;5;6m\002", prompt, "\001\033[m\002]» ");
+  // dont forget to free printer - its cat-ed so we need to free it. 
+  fflush(stdout);
   buffer = readline(printer);
+  // buffer = readline ("prompt"); 
+    
   free(printer);
   if (buffer == NULL){
     return 1;}

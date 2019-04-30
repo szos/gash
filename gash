@@ -15,12 +15,6 @@
 ;;  "/home/shozo/dev/gash/libgash.so"
 ;;  "init_gash_c")
 
-(define ($ string)
-  (let ((port (open-input-pipe string))
-	(strs (get-string-all port)))
-    (close-port port)
-    strs))
-
 (define home-directory 
   (let* ((port (open-input-pipe "echo $HOME"))
   	 (dir (read-line port)))
@@ -52,6 +46,8 @@
 
 ;;; parse string for guile to evaluate. 
 
+;;; "echo '§(format #f "~a" (sh "ls §(format #f \"/home\")"))"
+
 (define* (walk-string-for-guile string #:optional (location
 						   (string-index string #\§)))
   (let ((first-instance location))
@@ -81,11 +77,13 @@
 		   paren-counter (+ length 1)))))))
 
 (define (extract-scheme-strings string)
+  (echo string)
   (if (not (string-index string #\§))
       (list string)
       (let loop ((ref (string-index string #\§))
 		 (tail 0)
 		 (acc '()))
+	(echo ref)
 	(cond ((not ref)
 	       (reverse (cons (substring string tail) acc)))
 	      (else
@@ -118,6 +116,37 @@
 	   (loop (cdr strings) (cons (car strings) acc))))))
 
 ;;; end guile parsing.
+
+(define (sh . string) 
+  (let ((expanded
+	 (string-app-list (eval/replace-scheme-string
+			   (extract-scheme-strings string)))))
+    
+    (let ((s (collect-shell-command expanded #t #t)))
+      s))
+  ;; (let ((port (open-input-pipe string))
+  ;; 	(strs (get-string-all port)))
+  ;;   (close-port port)
+  ;;   (let ((expanded
+  ;; 	   (string-app-list (eval/replace-scheme-string
+  ;; 			     (extract-scheme-strings strs)))))
+  ;;     expanded))
+  )
+
+(define ($ string)
+  (let ((s (collect-shell-command string #t #t)))
+    (let ((expanded
+	   (string-app-list (eval/replace-scheme-string
+			     (extract-scheme-strings s)))))
+      expanded))
+  ;; (let ((port (open-input-pipe string))
+  ;; 	(strs (get-string-all port)))
+  ;;   (close-port port)
+  ;;   (let ((expanded
+  ;; 	   (string-app-list (eval/replace-scheme-string
+  ;; 			     (extract-scheme-strings strs)))))
+  ;;     expanded))
+  )
 
 ;; (define-macro ($ string))
 
