@@ -41,3 +41,6 @@ There are a couple features we will be wanting in GASH. The following is an unor
 There are some issues with readline, specifically with reading over a certain length, and skipping back to the beginning of the line with C-a. I'm no C wizard, and theres probably things that could be done I dont know of. I think looking to the Bash usage of readline would be a good start.
 
 There are a couple quirks. Firstly, as GASH accessorizes the shell, and isnt itself a shell, there end up being some oddities with running it as your default shell. Since its not technically a shell, its not in /etc/shells, so you cant just set it as a default. Another way of launching might be to run `xterm -e /path/to/gash`, but this doesnt work either. The only way of launching, currently, is to open a terminal and run it from there.
+
+Another quirk is strings. When you switch to scheme mode, and call a shell command (generally via (sh "...")) you need to make sure to escape strings. Take this example call: `$ echo '§(format #f "~a" (sh "ls §(format #f "/home")"))'` This call will error out, due to misquoted strings. Because the inner format contains a string while being contained within a string, the inner string needs to be escaped, like so: `$ echo '§(format #f "~a" (sh "ls §(format #f \"/home\")"))'`.
+Of course, this is all moot as sh and § dont play well yet. 
