@@ -12,7 +12,7 @@ Clone this repo, and ensure guile is installed to /usr/bin/guile. Now `cd` into 
 
 GASH has several functionalities. Firstly, text is read in via gnu readline. Next, the scheme sections(§) are replaced. Following that, the string is split into tokens. At this point we handle builtins, which you can define. Then user defined shorthand is replaced, and finally, its executed via /bin/sh (which is sometimes symlinked to bash).
 
-GASH reads from a user directory, .gashrc, where one can define whatever is needed. 
+GASH reads from a user directory, ~/.gashrc, where one can define whatever is needed. As GASH uses readline, ~/.inputrc is also read and respected. 
 
 ### §(...)
 
@@ -28,4 +28,10 @@ Regarding the lambda; The lambda will be called with the full command line, toke
 
 ### Shorthand
 
-Shorthand is like the alias of GASH. The last step before un-tokenizing is to replace any shorthand with its longhand. We check every token against the list of shorthand the user has defined, and whenever we encounter one that matches it is replaced with its appropriate longhand. There is one predefined shorthand, which changes any instance of "ls" with "ls --color". If a user wants to rid themselves of this behaviore, they can run `(define-shorthand "ls" "ls")` to reset it. 
+Shorthand is like the alias of GASH. The last step before un-tokenizing is to replace any shorthand with its longhand. We check every token against the list of shorthand the user has defined, and whenever we encounter one that matches it is replaced with its appropriate longhand. There is one predefined shorthand, which changes any instance of "ls" with "ls --color". If a user wants to rid themselves of this behaviore, they can run `(define-shorthand "ls" "ls")` to reset it.
+
+## Issues and Quirks
+
+There are some issues with readline, specifically with reading over a certain length, and skipping back to the beginning of the line with C-a. I'm no C wizard, and theres probably things that could be done I dont know of. I think looking to the Bash usage of readline would be a good start.
+
+There are a couple quirks. Firstly, as GASH accessorizes the shell, and isnt itself a shell, there end up being some oddities with running it as your default shell. Since its not technically a shell, its not in /etc/shells, so you cant just set it as a default. Another way of launching might be to run `xterm -e /path/to/gash`, but this doesnt work either. The only way of launching, currently, is to open a terminal and run it from there. 
