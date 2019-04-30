@@ -12,6 +12,8 @@ Clone this repo, and ensure guile is installed to /usr/bin/guile. Now `cd` into 
 
 GASH has several functionalities. Firstly, text is read in via gnu readline. Next, the scheme sections(§) are replaced. Following that, the string is split into tokens. At this point we handle builtins, which you can define. Then user defined shorthand is replaced, and finally, its executed via /bin/sh (which is sometimes symlinked to bash).
 
+GASH reads from a user directory, .gashrc, where one can define whatever is needed. 
+
 ### §(...)
 
 Conceptually, this is rather simple. If the toplevel form following § is a string, the § and form is replaced by its evaluation. Otherwise, it is assumed to be run for the side effects, in which case it is replaced by an empty string.
