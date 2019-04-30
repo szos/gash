@@ -219,7 +219,7 @@
 	  (if func ;; if the first element is a builtin
 	      (let ((strs ((cdr func) tokens)))
 		(unless (null? strs)
-		  (system (join-strings strs " "))))
+		  (system (join-strings (replace-shorthand strs) " "))))
 	      (let ((longhand (replace-shorthand tokens)))
 		(system (join-strings longhand " "))))))))
 
