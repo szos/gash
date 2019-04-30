@@ -15,6 +15,12 @@
 ;;  "/home/shozo/dev/gash/libgash.so"
 ;;  "init_gash_c")
 
+(define ($ string)
+  (let ((port (open-input-pipe string))
+	(strs (get-string-all port)))
+    (close-port port)
+    strs))
+
 (define home-directory 
   (let* ((port (open-input-pipe "echo $HOME"))
   	 (dir (read-line port)))
@@ -116,66 +122,69 @@
 ;; (define-macro ($ string))
 
 (define *builtins-alist*
-  `(("cd-old" . ,(lambda (lst)
+  `(("cd" . ,(lambda (lst)
 	       (cond ((null? (cdr lst))
 		      (chdir home-directory)
 		      '())
 		     ((string=? (second lst) "~/")
 		      (begin (chdir home-directory)
 			     (cddr lst)))
+		     ((string=? (second lst) "")
+		      (begin (chdir home-directory)
+			     '()))
 		     ((directory? (cadr lst))
 		      (begin (chdir (cadr lst))
 			     (cddr lst)))
-		     ;; ((not (directory? (cadr lst)))
-		     ;;  (let loop ((dir (cadr lst))
-		     ;; 		 (token-list (cddr lst)))
-		     ;; 	(echo "checking directory: ")
-		     ;; 	(echo dir)
-		     ;; 	(cond ((null? token-list)
-		     ;; 	       (cddr lst))
-		     ;; 	      ((directory? dir)
-		     ;; 	       (chdir dir)
-		     ;; 	       lst)
-		     ;; 	      (else
-		     ;; 	       (loop (string-append dir (car lst))
-		     ;; 		     (cdr lst))))))
 		     (else
-		      (echo "ERROR:  Not a directory")
-		      '()))))
-    ("cd" . ,(lambda (lst)
-		(cond ((null? (cdr lst))
-		       (chdir home-directory)
-		       '())
-		      ((string=? (second lst) "~/")
-		       (begin (chdir home-directory)
-			      (cddr lst)))
-		      ((string=? (second lst) "")
-		       (begin (chdir home-directory)
-			      '()))
-		      ((directory? (cadr lst))
-		       (begin (chdir (cadr lst))
-			      (cddr lst)))
-		      (else
-		       (let cd-loop ((dir-str (second lst))
-				     (rem-str (cddr lst)))
-			 (cond ((null? rem-str)
-				;; (display "in null? dir-str: ")(echo dir-str)
-				(when (directory? dir-str)
-				  (chdir dir-str))
-				'())
-			       ((directory? dir-str)
-                                ;; (display "in dir? dir-str: ")(echo dir-str)
-				(chdir (cadr lst)) (cdr rem-str))
-			       (else
-				;; (echo dir-str)
-				(cd-loop
-				 (string-append dir-str " " (car rem-str))
-				 (cdr rem-str)))))))))
+		      (let cd-loop ((dir-str (second lst))
+				    (rem-str (cddr lst)))
+			(cond ((null? rem-str)
+			       ;; (display "in null? dir-str: ")(echo dir-str)
+			       (when (directory? dir-str)
+				 (chdir dir-str))
+			       '())
+			      ((directory? dir-str)
+			       ;; (display "in dir? dir-str: ")(echo dir-str)
+			       (chdir (cadr lst)) (cdr rem-str))
+			      (else
+			       ;; (echo dir-str)
+			       (cd-loop
+				(string-append dir-str " " (car rem-str))
+				(cdr rem-str)))))))))
     ("exit" . ,(lambda (lst)
-		 (exit 0)))))
+		 (exit 0)))
+    ("reload" . ,(lambda (lst)
+		   (echo "Loading .gashrc")
+		   (load (format #f "~a/.gashrc" home-directory))
+		   '()))))
 
 (define (define-builtin name lambda)
   (set! *builtins-alist* (cons `(,name . ,lambda) *builtins-alist*)))
+
+(define *directory-stack* '())
+
+(define-builtin "pudir"
+  (lambda (lst)
+    (cond ((null? lst) lst)
+	  ((null? (cdr lst)) '())
+	  ((directory? (second lst))
+	   (set! *directory-stack* (cons (getcwd) *directory-stack*))
+	   (chdir (second lst))
+	   (cddr lst))
+	  (else
+	   (echo "unknown directory, try again")
+	   (cddr lst)))))
+
+(define-builtin "podir"
+  (lambda (lst)
+    (cond ((null? lst) lst)
+	  ((null? (car *directory-stack*))
+	   (display-color 1 "Directory stack is empty")
+	   (cdr lst))
+	  (else
+	   (chdir (car *directory-stack*))
+	   (set! *directory-stack* (cdr *directory-stack*))
+	   (cdr lst)))))
 
 (define *base-shorthand* ; this is for resetting the shorthand alist, should
   '(("ls" . "ls --color"))) ; one put to many entries.
@@ -240,7 +249,7 @@
 	     (loop-handler))))))
 
 (define (main)
-  (load (string-append home-directory "/.gashrc-test"))
+  (load (string-append home-directory "/.gashrc"))
   (loop-handler))
 
 (main)

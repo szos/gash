@@ -78,6 +78,8 @@ int get_string_from_user_with_prompt(char* str, char* prompt)
   char* printer = cat3("[\033[38;5;6m", prompt, "\033[0m]» ");
   buffer = readline(printer);
   free(printer);
+  if (buffer == NULL){
+    return 1;}
   if (strlen(buffer) != 0) {
     add_history(buffer);
     strcpy(str, buffer);
