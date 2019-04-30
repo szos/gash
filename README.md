@@ -30,8 +30,14 @@ Regarding the lambda; The lambda will be called with the full command line, toke
 
 Shorthand is like the alias of GASH. The last step before un-tokenizing is to replace any shorthand with its longhand. We check every token against the list of shorthand the user has defined, and whenever we encounter one that matches it is replaced with its appropriate longhand. There is one predefined shorthand, which changes any instance of "ls" with "ls --color". If a user wants to rid themselves of this behaviore, they can run `(define-shorthand "ls" "ls")` to reset it.
 
+## Wanted Features
+
+There are a couple features we will be wanting in GASH. The following is an unordered list of wanted features. If you have an idea for implementing any of them, open a pull request.
+1. Change the completion depending on the context. IE if we type `§(` then the completions change from just the directories, to guiles apropos completion. Then, when we type the final closing paren we switch back to directories. Since readline allows us to highlight parens as were typing, id imagine this is possible.
+2. More meaningful shell interaction. Write better interaction functions between shell and guile. Since the § has augmented pipes so much, it seems only right to have a $, which runs a shell command, collecting its output. This functionality is already implemented in gash-base-lib as collect-shell-command, but could be improved and gussied up. For example, send the string send in through our parser for guile, in a mutually recursive manner, so we can do `§(fun $[echo '§(otherfun $[ls -al])'])` and have everything be expanded propperly. 
+
 ## Issues and Quirks
 
 There are some issues with readline, specifically with reading over a certain length, and skipping back to the beginning of the line with C-a. I'm no C wizard, and theres probably things that could be done I dont know of. I think looking to the Bash usage of readline would be a good start.
 
-There are a couple quirks. Firstly, as GASH accessorizes the shell, and isnt itself a shell, there end up being some oddities with running it as your default shell. Since its not technically a shell, its not in /etc/shells, so you cant just set it as a default. Another way of launching might be to run `xterm -e /path/to/gash`, but this doesnt work either. The only way of launching, currently, is to open a terminal and run it from there. 
+There are a couple quirks. Firstly, as GASH accessorizes the shell, and isnt itself a shell, there end up being some oddities with running it as your default shell. Since its not technically a shell, its not in /etc/shells, so you cant just set it as a default. Another way of launching might be to run `xterm -e /path/to/gash`, but this doesnt work either. The only way of launching, currently, is to open a terminal and run it from there.
