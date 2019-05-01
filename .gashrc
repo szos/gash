@@ -1,0 +1,6 @@
+(define-shorthand "ls" "ls --color")
+
+(define (fmt string . args)
+  (format #f string args))
+
+(set! scheme-switch #\§)
