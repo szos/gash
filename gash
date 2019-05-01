@@ -44,12 +44,49 @@
 (define (string-app-list string-list)
   (apply string-append string-list))
 
+
+(define (parse-alg string)
+  (let ((strlst (string->list string))
+	pre scm post post-processed)
+    (let section-loop ((lst strlst)
+		       (accum '()))
+      (cond ((null? lst)
+	     (set! pre (reverse accum)))
+	    ((char=? (car lst) #\§)
+	     (set! pre (reverse accum))
+	     (set! strlst (cdr lst)))
+	    (else
+	     (section-loop (cdr lst) (cons (car lst) accum)))))
+    (let scm-loop ((lst strlst)
+		   (counter 0)
+		   (accum '()))
+      (cond ((null? lst)
+	     (if (equal? counter 0)
+		 (begin (set! scm (reverse accum))
+			(set! post #f))
+		 (throw 'malformed-scheme-section)))
+	    ((char=? (car lst) #\()
+	     (scm-loop (cdr lst) (+ counter 1) (cons (car lst) accum)))
+	    ((char=? (car lst #\)))
+             (if (equal? counter 0)
+		 (begin (set! scm (reverse accum))
+			(set! post (cdr lst)))
+		 (scm-loop (cdr lst) (- counter 1) (cons (car lst) accum))))
+	    (else
+	     (scm-loop (cdr lst) counter (cons (car lst) accum)))))
+    (unless post
+      (parse-alg post))))
+
+
+
 ;;; parse string for guile to evaluate. 
 
 ;;; "echo '§(format #f "~a" (sh "ls §(format #f \"/home\")"))"
 
+(define scheme-switch #\§)
+
 (define* (walk-string-for-guile string #:optional (location
-						   (string-index string #\§)))
+						   (string-index string scheme-switch)))
   (let ((first-instance location))
     (let loop ((char-list (string->list (substring string (+ 1 first-instance))))
 	       (accum '())
@@ -78,9 +115,9 @@
 
 (define (extract-scheme-strings string)
   (echo string)
-  (if (not (string-index string #\§))
+  (if (not (string-index string scheme-switch))
       (list string)
-      (let loop ((ref (string-index string #\§))
+      (let loop ((ref (string-index string scheme-switch))
 		 (tail 0)
 		 (acc '()))
 	(echo ref)
@@ -92,7 +129,7 @@
 		       (substring string ref
 				  (+ ref end-scheme)))
 		      (pre-string (substring string tail ref)))
-		 (loop (string-index string #\§ (+ ref 1))
+		 (loop (string-index string scheme-switch (+ ref 1))
 		       (+ ref end-scheme)
 		       (cons scheme-string (cons pre-string acc)))))))))
 
@@ -103,7 +140,7 @@
 	   (reverse acc))
 	  ((string=? (car strings) "")
 	   (loop (cdr strings) (cons (car strings) acc)))
-	  ((char=? (string-ref (car strings) 0) #\§)
+	  ((char=? (string-ref (car strings) 0) scheme-switch)
 	   (let ((result
 		  (eval-string (substring (car strings) 1))))
 	     (loop (cdr strings)

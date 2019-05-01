@@ -12,7 +12,9 @@ Clone this repo, and ensure guile is installed to /usr/bin/guile. Now `cd` into 
 
 GASH has several functionalities. Firstly, text is read in via gnu readline. Next, the scheme sections(§) are replaced. Following that, the string is split into tokens. At this point we handle builtins, which you can define. Then user defined shorthand is replaced, and finally, its executed via /bin/sh (which is sometimes symlinked to bash).
 
-GASH reads from a user directory, ~/.gashrc, where one can define whatever is needed. As GASH uses readline, ~/.inputrc is also read and respected. 
+GASH reads from a user directory, ~/.gashrc, where one can define whatever is needed. As GASH uses readline, ~/.inputrc is also read and respected.
+
+To change the character to switch to scheme to a comma, place `(set! scheme-switch #\,)` in you ~/.gashrc. 
 
 ### §(...)
 
