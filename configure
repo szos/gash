@@ -23,6 +23,7 @@
 	(display linkdir) (newline)
 	(echo (format #f "ln ~a/gash ~a/gash" (getcwd) linkdir))
 	(system-fmt "ln ~a/gash ~a/gash" (getcwd) linkdir)
+	(build-libgash)
 	)
        ((--install) (echo "installing gash, by symlinking gash to /bin/gash")
 	(build-libgash)
