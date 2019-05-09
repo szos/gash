@@ -6,16 +6,11 @@ GASH is a shell based on guile scheme. However, its not exactly a shell. Its mor
 
 ## Why Should I Care and/or Use GASH?
 
-Because its FUN! For basic shell usage, it works just fine, same as bash, except for completions following an opening paren. It lets you use scheme from the command line with a simple switch character to either things for side effects or splicing in text.
-
-say we have a program that depends on a different program being open and running before its opened. We could write the following:
-`
-(define (launch-my-prog)
-  (
+Because its FUN! For basic shell usage, it works just fine, same as bash, except for completions following an opening paren. It lets you use scheme from the command line with a simple switch character to either things for side effects or splicing in text. The only place it really falls flat on its face is in completions on things with spaces in them. 
 
 ## Installation
 
-Clone this repo, and ensure guile is installed to /usr/bin/guile. CD into the GASH directory and run ./configure. This will build libgash.so and set gash to be executable. To install, run `./configure --install`, or `./configure --install-to directory`. This will install to either /bin/gash or		/path/provided/gash, respectively. 
+Clone this repo, and ensure guile is installed to /usr/bin/guile. CD into the GASH directory and run ./configure. This will build libgash.so and set gash to be executable. To install, run `./configure --install`. This will install GASH to /usr/local/bin/gash and the libraries to /usr/local/lib/. This will put GASH into the PATH, allowing you to run it anywhere. 
 
 ## Usage
 
