@@ -1,0 +1,60 @@
+* This is a reference manual thing for GASH. 
+  This document contains a list of variables and functions, and describes general functionality of GASH. 
+** History
+*** Variables:
+    - *history*
+     This variable controls whether history is enabled. Set to #f to disable all history
+    - *max-history*
+     Controls the maximum number of stored history entries. Defaults to 1000
+    - *history-count*
+     The current number of items in history
+    - *history-holder*
+     This stores the history entries, in a list.
+    - *history-rules*
+      A list of functions that are used to determine when to add something to the history. 
+    - *history-rules-inclusive*
+     This controls behavior when adding an item to history. To add an item, we call every function in *history-rules* on the text we want to add. Each of these functions MUST return either #t or #f. Once we have a list of every functions true/false return value, we use *history-rules-inclusive*. If its #t, then if a SINGLE function in *history-rules* returned true, we add the text to *history-holder*. If *history-rules-inclusive* is #f, then if a single function returned false we dont add the text to history.
+*** Functions:
+    - define-history-rule function
+      Adds a single rule to *history-rules* in the form of function. Function MUST return true/false. Example call:
+#+BEGIN_SRC guile
+(define-history-rule
+  (lambda (txt)
+    (if (string=? txt (history-prev-entry-internal))
+        #f
+	#t)))
+#+END_SRC
+    - add-history-item text
+      takes a string, text, and performs a series of checks via *history-rules* to determine whether or not to add text to the history. Example call: (add-history-item "some text for the history")
+    - history-previous-entry . l
+      Takes an optional argument, l, which if provided should be an integer. If its provided we get the lth element within history, NOT counting the first element. This is due to the usage of add-history-item within our main loop. We add an item to history immediatly after prompting for it. Therefore, the VERY FIRST item in history is the previous line. This function is designed for use from the shell, and we dont want to return the line we just typed in, so we return the actual previous line, which is in the second position in history, not first.
+    - history-prev-entry-internal
+      This takes no arguments - its for use within gash functions. it returns the item most recently added to history. Youll notice its presence in the source block above. It is used instead of history-previous-entry because it is called in the history adding function to determine whether to add something. thus, if we want to get the actual previous line, we want the actual head of the history list. 
+*** Functionality:
+    This is provided for grabbing history items and using them within the shell and within guile. These functions and variables have NO relation to the readline history. However it would be optimal to integrate the two, instead of having two seperate history stacks. 
+** Errors
+*** Variable:
+    - *supress-error-messages*
+      This variable defaults to #f, set to #t to suppress all error messages. 
+*** Functions:
+*** Functionality:
+    GASH handles errors such that they will (hopefully) never cause gash to exit. We do this by wrapping up our loop within a call to with-throw-handler that is passed #t for the key. This causes it to match with EVERY key thrown. If an error is encountered, we check if the key is 'quit, and if it is we call exit. otherwise, we re-call our loop handler. Before that, however, if *supress-error-messages* is #f we display our error for the user. 
+** Completion
+*** Variables:
+    - *readline-generator-function*
+      This variable holds a function which we will call for completions from readline. This function is a traditional readline generator function, which takes text and state variables. These types of functions are covered in the readline portion of the guile manual.
+    - *readline-alt-completion-function*
+      Similar to the above variable, this holds a function. This function should take text, start, and end variables. This function should return #t or #f to choose whether to use our *readline-generator-function* to make completions, or if we should use the builtin filename completion. If we return #t we will use our generator function. 
+*** Functions:
+*** Functionality:
+    I didnt find the functionality I needed within the basic guile readline library, so I added my own bindings via libgash.c. 
+** Shorthand and Builtins
+*** Variables:
+*** Functions:
+    - define-shorthand from to
+      defines a shorthand key-value pair and adds it to the shorthand alist. every instance of from will be set to to
+    - define-builtin name lambda
+      adds a key value paer of name . lambda to the builtins alist. Name should be a string, and lambda should be a function to call which takes a list and returns a list. The list taken in is a list of tokens - its a tokenized version of the command line. This list includes the builtin that triggered it. The builtins function should do its thing, and then return a list of tokens to be run. So, for example, we could pass something that echoes the current working directory after dealing with the logic of cd. 
+            
+*** Functionality:
+    
