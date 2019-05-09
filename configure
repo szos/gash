@@ -13,10 +13,26 @@
   (echo "setting gash to be executable")
   (system "chmod +x gash"))
 
+(define (clean-gash)
+  (let ((path (collect-shell-command "which gash")))
+    (display "cleaning ") (echo path)
+    (system-fmt "rm ~a" (car path))))
+
+;; (define (reinstall))
+(define (smart-reinstall)
+  (let ((path (collect-shell-command "which gash")))
+    (when (directory? (car path))
+      (display "cleaning ") (echo path)
+      (system-fmt "rm ~a" (car path))
+      (build-libgash)
+      (system-fmt "ln ~a/gash ~a" (getcwd) path))))
+
 (define (main . args)
   (if (null? (cdr (car args)))
       (build-libgash)
       (for-cmd-line
+       ((--clean) (clean-gash))
+       ((--reinstall) smart-reinstall)
        ((--install-to)
 	(set! linkdir (shift))
 	(display "installing GASH by symlinking to ")
@@ -27,5 +43,4 @@
 	)
        ((--install) (echo "installing gash, by symlinking gash to /bin/gash")
 	(build-libgash)
-	;; (system-fmt "ln ~a/gash ~a/gash" (getcwd) linkdir)
-	))))
+	(system-fmt "ln ~a/gash ~a/gash" (getcwd) linkdir)))))
