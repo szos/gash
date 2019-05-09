@@ -10,6 +10,8 @@
 	     (ice-9 regex)
 	     (ice-9 buffered-input))
 
+(define *suppress-error-messages* #f)
+
 ;; (define log-object
 ;;   (let ((log-file-port (open-file "gash.log" "w")))
 ;;     (cons
@@ -460,8 +462,12 @@ own readline function, or return #f.  "
       (cond ((equal? key 'quit)
 	     (exit))
 	    (else
-	     (display-color 1 "ERROR:  ")
-	     (display key) (display ", ") (echo args)
+	     (unless *suppress-error-messages*
+	       (display-color 1 "ERROR:  ")
+	       (display key) (display ", ")
+	       (map (lambda (el) (display el) (display ", ")) args)
+	       (newline))
+	     ;; (echo args)
 	     (loop-handler))))))
 
 (define builtins-list-for-completions
