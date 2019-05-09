@@ -99,6 +99,10 @@
   `(cadr (cdddr (cdddr ,thing))))
 (define-macro (ninth thing)
   `(caddr (cdddr (cdddr ,thing))))
+(define (last l)
+  (if (null? (cdr l))
+      (car l)
+      (last (cdr l))))
 
 ;; (define-syntax run-bash-command
 ;;   (syntax-rules ()
