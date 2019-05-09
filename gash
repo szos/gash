@@ -5,7 +5,8 @@
 (use-modules (ice-9 format)
 	     (ice-9 popen)
 	     (ice-9 rdelim)
-	     (ice-9 textual-ports))
+	     (ice-9 textual-ports)
+	     (ice-9 regex))
 
 (let ((extension-path (format #f "~a/libgash.so" (getcwd)))
       (init-function "init_gash_c"))
@@ -15,11 +16,23 @@
 ;;  "/home/shozo/dev/gash/libgash.so"
 ;;  "init_gash_c")
 
+;; (define (with-attempted-completion completer thunk)
+;;   (let ((old-comp *readline-alt-completion-function*))
+;;     (dynamic-wind
+;;       (lambda ()
+;; 	(set! *readline-alt-completion-function* completer))
+;;       thunk
+;;       (lambda ()
+;; 	(set! *readline-alt-completion-function* old-comp)))))
+
 (define home-directory 
   (let* ((port (open-input-pipe "echo $HOME"))
   	 (dir (read-line port)))
     (close-port port)
     dir))
+
+(define *all-programs*
+  (string-split (collect-shell-command "compgen -c" #t) #\newline))
 
 (define user-at-host
   (let* ((user-port (open-input-pipe "echo $USER"))
@@ -120,7 +133,7 @@
       (let loop ((ref (string-index string scheme-switch))
 		 (tail 0)
 		 (acc '()))
-	(echo ref)
+	;; (echo ref)
 	(cond ((not ref)
 	       (reverse (cons (substring string tail) acc)))
 	      (else
@@ -279,27 +292,95 @@
 	(let ((p (substring curdir (+ 1 (string-index-right curdir #\/)))))
 	  (format #f "~a ~a" user-at-host p)))))
 
+(define commands-completion-function
+  (let ((completions '()))
+    (lambda (text cont?)
+      (if (not cont?)
+	  (set! completions
+	    (let loop ((cmp *all-programs*)
+		       (accum '()))
+	      (if (null? cmp)
+		  accum
+		  (if (string-prefix? text (car cmp))
+		      (loop (cdr cmp) (cons (car cmp) accum))
+		      (loop (cdr cmp) accum))))))
+      (if (null? completions)
+          #f
+          (let ((retval (car completions)))
+            (begin (set! completions (cdr completions))
+                   retval))))))
+
+(define apropos-completion-function-test
+  (let ((completions '()))
+    (lambda (text cont?)
+      (echo "in apropos scheme function")
+      (if (not cont?)
+          (set! completions
+                (map symbol->string
+                     (apropos-internal
+                      (string-append "^" (regexp-quote text))))))
+      (if (null? completions)
+          #f
+          (let ((retval (car completions)))
+            (begin (set! completions (cdr completions))
+                   retval))))))
+
+(define (completer-for-alt text start end)
+  "return #f to indicate we want to return NULL in the c function and 
+subsequently use filename completion. return #t to call the 
+*readline-generator-function* that MUST be defined. if we want to switch 
+between readline generator functions then EVERY condition MUST set up its 
+own readline function, or return #f.  "
+  ;; (echo "in completer-for-alt")
+  (cond ((equal? start 0)
+  	 ;; (echo "start is 0")
+         ;; (set! *readline-generator-function* apropos-completion-function-test)
+  	 #t)
+  	((and (not (string=? text "")) (char=? (string-ref text 0) #\())
+  	 ;; (set! *readline-generator-function* apropos-completion-function-test)
+  	 #t)
+  	(else #f))
+  )
+
+
+
+(define (read-test)
+  (read-with-prompt (generate-prompt)))
+
+(define (read-attempt-comp)
+  (set! *readline-generator-function* commands-completion-function)
+  ;; commands-completion-function)
+  (set! *readline-alt-completion-function* completer-for-alt)
+  ;; (echo "in read-attempt-comp")
+  (read-with-prompt (generate-prompt))
+  ;; (with-attempted-completion
+  ;;  completer-for-alt
+  ;;  read-test)
+  )
+
 (define (read-and-interpret)
   ;; (echo "main-loop")
   (let ((prompt ;; (get-string-from-user)
-	 (read-with-prompt (generate-prompt))
+	 ;; (read-with-prompt (generate-prompt))
+	 (read-attempt-comp)
 	 ))
     ;; (display "prompted text: ") (echo prompt)
-    (if (string=? prompt "")
-	(read-and-interpret)
-	(let* ((scheme-replaced
-		(string-app-list
-		 (eval/replace-scheme-string (extract-scheme-strings prompt))))
-	       (tokens (string-split scheme-replaced #\space))
-	       (func (assoc (car tokens)
-			    *builtins-alist*)))
-	  ;; (display "scheme replaced string: ")(echo scheme-replaced)
-	  (if func ;; if the first element is a builtin
-	      (let ((strs ((cdr func) tokens)))
-		(unless (null? strs)
-		  (system (join-strings (replace-shorthand strs) " "))))
-	      (let ((longhand (replace-shorthand tokens)))
-		(system (join-strings longhand " "))))))))
+    (unless (not prompt)
+      (if (and prompt (string=? prompt ""))
+	  (read-and-interpret)
+	  (let* ((scheme-replaced
+		  (string-app-list
+		   (eval/replace-scheme-string (extract-scheme-strings prompt))))
+		 (tokens (string-split scheme-replaced #\space))
+		 (func (assoc (car tokens)
+			      *builtins-alist*)))
+	    ;; (display "scheme replaced string: ")(echo scheme-replaced)
+	    (if func ;; if the first element is a builtin
+		(let ((strs ((cdr func) tokens)))
+		  (unless (null? strs)
+		    (system (join-strings (replace-shorthand strs) " "))))
+		(let ((longhand (replace-shorthand tokens)))
+		  (system (join-strings longhand " ")))))))))
 
 (define (loop-handler)
   (with-throw-handler #t
