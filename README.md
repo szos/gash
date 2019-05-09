@@ -35,7 +35,7 @@ Shorthand is like the alias of GASH. The last step before un-tokenizing is to re
 ## Wanted Features
 
 There are a couple features we will be wanting in GASH. The following is an unordered list of wanted features. If you have an idea for implementing any of them, open a pull request.
-1. Change the completion depending on the context. IE if we type `§(` then the completions change from just the directories, to guiles apropos completion. Then, when we type the final closing paren we switch back to directories. Since readline allows us to highlight parens as were typing, id imagine this is possible.
+1. Change the completion depending on the context. IE if we type `§(` then the completions change from just the directories, to guiles apropos completion. Then, when we type the final closing paren we switch back to directories. Since readline allows us to highlight parens as were typing, id imagine this is possible. ** this is getting better! ** we can differentiate based on state and location within the line weve read so far. 
 2. More meaningful shell interaction. Write better interaction functions between shell and guile. Since the § has augmented pipes so much, it seems only right to have a $, which runs a shell command, collecting its output. This functionality is already implemented in gash-base-lib as collect-shell-command, but could be improved and gussied up. For example, send the string send in through our parser for guile, in a mutually recursive manner, so we can do `§(fun $[echo '§(otherfun $[ls -al])'])` and have everything be expanded propperly. 
 
 ## Issues and Quirks
