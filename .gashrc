@@ -5,3 +5,5 @@
 
 (set! scheme-switch #\§)
 
+(define-history-rule (lambda (txt) #t))
+
