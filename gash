@@ -247,22 +247,27 @@
 (define-builtin "pudir"
   (lambda (lst)
     (cond ((null? lst) lst)
-	  ((null? (cdr lst)) '())
+	  ((null? (cdr lst))
+	   (echo-color 1 "Enter a directory")
+	   '())
 	  ((directory? (second lst))
 	   (set! *directory-stack* (cons (getcwd) *directory-stack*))
+	   (echo-color 2 (format #f "Pushing from ~a to ~a" (getcwd) (second lst)))
 	   (chdir (second lst))
 	   (cddr lst))
 	  (else
-	   (echo "unknown directory, try again")
+	   (echo-color 1 "unknown directory, try again")
 	   (cddr lst)))))
 
 (define-builtin "podir"
   (lambda (lst)
     (cond ((null? lst) lst)
-	  ((null? (car *directory-stack*))
-	   (display-color 1 "Directory stack is empty")
+	  ((null? *directory-stack*)
+	   (echo-color 1 "Directory stack is empty")
 	   (cdr lst))
 	  (else
+	   (echo-color 2 (format #f "Popping from ~a to ~a"
+				 (getcwd) (car *directory-stack*)))
 	   (chdir (car *directory-stack*))
 	   (set! *directory-stack* (cdr *directory-stack*))
 	   (cdr lst)))))
