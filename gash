@@ -41,6 +41,8 @@
 ;;       (lambda ()
 ;; 	(set! *readline-alt-completion-function* old-comp)))))
 
+(load (format #f "~a/history.scm" (getcwd)))
+
 (define home-directory 
   (let* ((port (open-input-pipe "echo $HOME"))
   	 (dir (read-line port)))
@@ -266,7 +268,8 @@
 	   '())
 	  ((directory? (second lst))
 	   (set! *directory-stack* (cons (getcwd) *directory-stack*))
-	   (echo-color 2 (format #f "Pushing from ~a to ~a" (getcwd) (second lst)))
+	   (echo-color 2 (format #f "Pushing from ~a to ~a"
+				 (getcwd) (second lst)))
 	   (chdir (second lst))
 	   (cddr lst))
 	  (else
@@ -429,6 +432,8 @@ own readline function, or return #f.  "
 	 (read-attempt-comp)
 	 ))
     ;; (display "prompted text: ") (echo prompt)
+    (when *history*
+      (add-history-item prompt))
     (unless (not prompt)
       (if (and prompt (string=? prompt ""))
 	  (read-and-interpret)
