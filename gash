@@ -10,6 +10,20 @@
 	     (ice-9 regex)
 	     (ice-9 buffered-input))
 
+;; (define log-object
+;;   (let ((log-file-port (open-file "gash.log" "w")))
+;;     (cons
+;;      (lambda (text)
+;;        (display text log-file-port) (newline log-file-port))
+;;      (lambda ()
+;;        (close-port log-file-port)))))
+
+;; (define (write-to-log text)
+;;   ((car log-object) text))
+
+;; (define (close-log-file)
+;;   ((cdr log-object)))
+
 (let ((extension-path (format #f "~a/libgash.so" (getcwd)))
       (init-function "init_gash_c"))
   (load-extension extension-path init-function))
@@ -445,8 +459,18 @@ own readline function, or return #f.  "
 	     (display key) (display ", ") (echo args)
 	     (loop-handler))))))
 
+(define builtins-list-for-completions
+  (map (lambda (el)
+	 (car el))
+       *builtins-alist*))
+
 (define (main)
   (load (string-append home-directory "/.gashrc"))
+  (set! *all-programs* (append builtins-list-for-completions *all-programs*))
+  ;; (let ((port (open-file "gash.log" "w")))
+  ;;   (display "GASH logfile" port) (newline port) (newline port)
+  ;;   (close-port port))
   (loop-handler))
 
 (main)
+

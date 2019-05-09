@@ -266,22 +266,30 @@ alt_completer(char *text, int start, int end)
   }
 }
 
-void log(char *text)
-{
-  FILE *log;
-  log = fopen("gash.log", "a");
-  if (log == NULL)
-    exit(1);
-  fprintf(log, text);
-}
+/* int log(char *text) */
+/* { */
+/*   FILE *log; */
+/*   log = fopen("gash.log", "a"); */
+/*   if (log == NULL){ */
+/*     fclose(log); */
+/*     return 0; */
+/*   } */
+/*   fprintf(log, text); */
+/*   fclose(log); */
+/*   return 1; */
+/* } */
+
+/* SCM scm_write_to_log(SCM text) */
+/* { */
+/*   int ret = log(scm_to_locale_string(text)); */
+/*   return scm_from_bool(ret); */
+/* } */
 
 void init_gash_c()
 {
-  FILE *log;
-  log = fopen("gash.log", "w");
-  if (log == NULL)
-    exit(1);
-  fprintf(log, "beginning GASH log\n\n");
+  /* FILE * logg = fopen("gash.log", "w"); */
+  /* fclose(logg); */
+  /* int i = log("beginning GASH log\n\n"); */
   
   scm_readline_generator_function_var
     = scm_c_define("*readline-generator-function*", SCM_BOOL_F);
@@ -289,6 +297,7 @@ void init_gash_c()
     = scm_c_define("*readline-alt-completion-function*", SCM_BOOL_F);
   rl_attempted_completion_function = (rl_compentry_func_t*) alt_completer;
 
+  // scm_c_define_gsubr("write-to-log", 1, 0, 0, scm_write_to_log);
   scm_c_define_gsubr("get-line-contents", 0, 0, 0, scm_get_rl_line_buffer);
   scm_c_define_gsubr("exposed-file-completion-function", 2, 0, 0,
 		     scheme_expose_filename_completion_function);

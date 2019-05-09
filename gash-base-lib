@@ -81,6 +81,11 @@
   `(begin (display ,thing)
 	  (newline)))
 
+(define (print strings-list)
+  (map (lamdba (el)
+	 (echo el))
+       strings-list))
+
 (define-macro (first thing)
   `(car ,thing))
 (define-macro (second thing)
