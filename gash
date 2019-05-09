@@ -6,7 +6,9 @@
 	     (ice-9 popen)
 	     (ice-9 rdelim)
 	     (ice-9 textual-ports)
-	     (ice-9 regex))
+	     (ice-9 session)
+	     (ice-9 regex)
+	     (ice-9 buffered-input))
 
 (let ((extension-path (format #f "~a/libgash.so" (getcwd)))
       (init-function "init_gash_c"))
@@ -313,17 +315,61 @@
 (define apropos-completion-function-test
   (let ((completions '()))
     (lambda (text cont?)
-      (echo "in apropos scheme function")
+      ;; (echo "in apropos scheme function")
       (if (not cont?)
-          (set! completions
-                (map symbol->string
-                     (apropos-internal
-                      (string-append "^" (regexp-quote text))))))
+	  (set! completions
+	    (map symbol->string
+		 (apropos-internal
+		  (string-append "^" (regexp-quote text))))))
       (if (null? completions)
-          #f
-          (let ((retval (car completions)))
-            (begin (set! completions (cdr completions))
-                   retval))))))
+	  #f
+	  (let ((retval (car completions)))
+	    ;; (echo "completions not null, and state not #f")
+	    (begin (set! completions (cdr completions))
+		   retval))))))
+
+(define-macro (make-completer . body)
+  "This takes a body, which can reference the variable current-word. This is 
+more useful than just having text. text is divided based on many things, so if 
+one types §(for and presses tab, it will complete based on for, as the §( is 
+treated as a seperate thing. so we have 4 total things we can reference:
+start and end, which are our bounds within (get-line-contents), as well as
+text and current-word, which are our current completion text, and the last word
+in the line (meaning the final space to the end of the line)"
+  `(lambda (text start end)
+     (let ((current-word (last (string-split (get-line-contents) #\space))))
+       ,@body)))
+
+(define default-gash-begin-scheme-string
+  (format #f "~a(" scheme-switch))
+
+(define default-gash-completer
+  (make-completer
+   (cond ((string-prefix? default-gash-begin-scheme-string current-word)
+	  (set! *readline-generator-function* apropos-completion-function-test)
+	  #t)
+	 ((string-prefix? "(" current-word)
+	  (set! *readline-generator-function* apropos-completion-function-test)
+	  #t)
+	 ((equal? start 0)
+	  (set! *readline-generator-function* commands-completion-function)
+	  #t)
+	 (else #f))))
+
+(define (completer-switch text start end)
+  (let* ((line (get-line-contents))
+	 (split-line (string-split line #\space))
+	 (current-word (last split-line)))
+    (cond ((string-prefix? "§(" current-word)
+	   (set! *readline-generator-function* apropos-completion-function-test)
+	   #t)
+	  ((string-prefix? "(" current-word)
+	   (set! *readline-generator-function* apropos-completion-function-test)
+	   #t)
+	  ((equal? start 0)
+	   (set! *readline-generator-function* commands-completion-function)
+	   #t)
+	  (else #f))))
 
 (define (completer-for-alt text start end)
   "return #f to indicate we want to return NULL in the c function and 
@@ -334,29 +380,28 @@ own readline function, or return #f.  "
   ;; (echo "in completer-for-alt")
   (cond ((equal? start 0)
   	 ;; (echo "start is 0")
-         ;; (set! *readline-generator-function* apropos-completion-function-test)
+	 (echo (get-line-contents))
+         (set! *readline-generator-function* commands-completion-function)
   	 #t)
-  	((and (not (string=? text "")) (char=? (string-ref text 0) #\())
-  	 ;; (set! *readline-generator-function* apropos-completion-function-test)
+	;; ((string=? text "")
+	;;  #f)
+	;; ((string=? "§(" text)
+	;;  (echo text) #t)
+  	((string-prefix? "§(" text)
+  	 (set! *readline-generator-function* apropos-completion-function-test)
+	 ;; (echo "readline-generator-function is apropos function")
+	 (echo (get-line-contents))
   	 #t)
-  	(else #f))
-  )
-
-
+  	(else #f)))
 
 (define (read-test)
   (read-with-prompt (generate-prompt)))
 
 (define (read-attempt-comp)
-  (set! *readline-generator-function* commands-completion-function)
-  ;; commands-completion-function)
-  (set! *readline-alt-completion-function* completer-for-alt)
-  ;; (echo "in read-attempt-comp")
-  (read-with-prompt (generate-prompt))
-  ;; (with-attempted-completion
-  ;;  completer-for-alt
-  ;;  read-test)
-  )
+  ;; (set! *readline-alt-completion-function* completer-for-alt)
+  ;; (set! *readline-alt-completion-function* completer-switch)
+  (set! *readline-alt-completion-function* default-gash-completer)
+  (read-with-prompt (generate-prompt)))
 
 (define (read-and-interpret)
   ;; (echo "main-loop")
