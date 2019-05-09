@@ -6,7 +6,7 @@ GASH is a shell based on guile scheme. However, its not exactly a shell. Its mor
 
 ## Installation
 
-Clone this repo, and ensure guile is installed to /usr/bin/guile. Now `cd` into the GASH directory and run `$ chmod +x gash`. Run `make` to generate the neccessary .so file for GASH. A more permanent installation isnt available currently.
+Clone this repo, and ensure guile is installed to /usr/bin/guile. CD into the GASH directory and run ./configure. This will build libgash.so and set gash to be executable. To install, run `./configure --install`, or `./configure --install-to directory`. This will install to either /bin/gash, or		/path/provided/gash. 
 
 ## Usage
 
