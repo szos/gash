@@ -1,5 +1,5 @@
 #!/usr/bin/guile \
--l gash-base-lib
+-l /usr/local/lib/gash-base-lib
 !#
 
 (use-modules (ice-9 format)
@@ -10,13 +10,16 @@
 	     (ice-9 regex)
 	     (ice-9 buffered-input))
 
+;; (let ((ext "/usr/local/lib/")
+;;       (init-function "init_gash_c"))
+;;   ;; (load-extension extension-path init-function)
+;;   (load (string-append ext "gash-base-lib"))
+;;   (load (string-append ext )))
+
 (define *suppress-error-messages* #f)
 
-(define (launch-prog)
-  (let ((re (open-input-pipe "gparted")))
-    ""))
-
-(let ((extension-path (format #f "~a/libgash.so" (getcwd)))
+(let ((extension-path (format #f "/usr/local/lib/libgash.so" ;; (getcwd)
+			      ))
       (init-function "init_gash_c"))
   (load-extension extension-path init-function))
 
@@ -29,7 +32,7 @@
 ;;       (lambda ()
 ;; 	(set! *readline-alt-completion-function* old-comp)))))
 
-(load (format #f "~a/history.scm" (getcwd)))
+(load "/usr/local/lib/history.scm")
 
 (define home-directory 
   (let* ((port (open-input-pipe "echo $HOME"))

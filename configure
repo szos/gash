@@ -2,6 +2,10 @@
 -l gash-base-lib -e main -s
 !#
 
+(let ((extension-path (format #f "~a/libgash.so" (getcwd)))
+      (init-function "init_gash_c"))
+  (load-extension extension-path init-function))
+
 (define cc "gcc")
 (define cflags "`pkg-config --cflags readline guile-2.2`")
 (define linkdir "/bin/")
@@ -13,6 +17,17 @@
   (echo "setting gash to be executable")
   (system "chmod +x gash"))
 
+(define (link-gash-libs)
+  (echo "linking gash libraries")
+  (system-fmt "sudo cp ~a/gash-base-lib /usr/local/lib/gash-base-lib" (getcwd))
+  (system-fmt "sudo cp ~a/libgash.so /usr/local/lib/libgash.so" (getcwd))
+  (system-fmt "sudo cp ~a/history.scm /usr/local/lib/history.scm" (getcwd)))
+
+(define (link-gash . location)
+  (if (null? location)
+      (system-fmt "sudo cp ~a/gash /usr/local/bin/gash" (getcwd))
+      (system-fmt "sudo cp ~a/gash ~a" (getcwd) (car location))))
+
 (define (clean-gash)
   (let ((path (collect-shell-command "which gash")))
     (display "cleaning ") (echo path)
@@ -21,18 +36,23 @@
 ;; (define (reinstall))
 (define (smart-reinstall)
   (let ((path (collect-shell-command "which gash")))
-    (when (directory? (car path))
-      (display "cleaning ") (echo path)
-      (system-fmt "rm ~a" (car path))
-      (build-libgash)
-      (system-fmt "ln ~a/gash ~a" (getcwd) path))))
+    (cond ((directory? (car path))
+	   (build-libgash)
+	   (link-gash-libs)
+	   (display "cleaning ")
+	   (echo path)
+	   (system-fmt "rm ~a" (car path))
+	   (system-fmt "ln ~a/gash ~a" (getcwd) path))
+	  (else
+	   (echo "GASH not in path, re run with --install")))))
 
 (define (main . args)
   (if (null? (cdr (car args)))
       (build-libgash)
       (for-cmd-line
+       ((-ll) (link-gash-libs))
        ((--clean) (clean-gash))
-       ((--reinstall) smart-reinstall)
+       ((--reinstall) (smart-reinstall))
        ((--install-to)
 	(set! linkdir (shift))
 	(display "installing GASH by symlinking to ")
@@ -41,6 +61,7 @@
 	(system-fmt "ln ~a/gash ~a/gash" (getcwd) linkdir)
 	(build-libgash)
 	)
-       ((--install) (echo "installing gash, by symlinking gash to /bin/gash")
-	(build-libgash)
-	(system-fmt "ln ~a/gash ~a/gash" (getcwd) linkdir)))))
+       ((--install)
+        (build-libgash)
+	(link-gash-libs)
+	(link-gash)))))
