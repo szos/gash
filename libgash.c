@@ -80,7 +80,9 @@ int get_string_from_user_with_prompt(char* str, char* prompt)
   char* printer = cat3("[\001\033[38;5;6m\002", prompt, "\001\033[m\002]» ");
   // dont forget to free printer - its cat-ed so we need to free it. 
   fflush(stdout);
+  // printf("in read-with-prompt, before reading\n");
   buffer = readline(printer);
+  // printf("after reading\n");
   // buffer = readline ("prompt"); 
     
   free(printer);
@@ -95,16 +97,47 @@ int get_string_from_user_with_prompt(char* str, char* prompt)
   }
 }
 
-SCM is_string_directory(SCM path)
+/*
+char **command_generator(const char *text, int state)
 {
-  struct stat sb;
-  int exists = stat(scm_to_locale_string(path), &sb);
-  if (exists == -1)
-    return scm_from_bool(0);
-  if (exists == 0 && S_ISDIR(sb.st_mode))
-    return scm_from_bool(1);
-  return scm_from_bool(0);
+  SCM function_sym = scm_c_lookup("command-completer");
+  SCM func_val = scm_variable_ref(function_sym);
+  SCM ret_val = scm_call_2(func_val, scm_from_locale_string(text),
+			   scm_from_bool(state));
+  if (scm_is_bool(ret_val) == 1)
+    return ((char *)NULL);
+  return scm_from_locale_string(ret_val);
 }
+
+char **smart_completion(char *text, int start, int end)
+{
+  char **matches;
+
+  matches = (char **)NULL;
+
+  if (start == 0)
+    matches = rl_completion_matches(text, command_generator);
+  return (matches); 
+}
+
+char **completer_test(const char *text, int state)
+{
+  SCM function_sym = scm_c_lookup("command-completer");
+  SCM func_val = scm_variable_ref(function_sym);
+  SCM ret_val = scm_call_2(func_val, scm_from_locale_string(text),
+			   scm_from_bool(state));
+  if (scm_is_bool(ret_val) == 1)
+    return ((char *)NULL);
+  return scm_from_locale_string(ret_val);
+}
+
+void initialize_readline ()
+{
+  rl_readline_name = "GASH";
+  rl_attempted_completion_function = smart_completion;
+}
+*/
+
 
 SCM get_string_from_user_scm_wrapper()
 {
@@ -116,16 +149,151 @@ SCM get_string_from_user_scm_wrapper()
   return scm_from_locale_string("");
 }
 
+SCM is_string_directory(SCM path)
+{
+  struct stat sb;
+  int exists = stat(scm_to_locale_string(path), &sb);
+  if (exists == -1)
+    return scm_from_bool(0);
+  if (exists == 0 && S_ISDIR(sb.st_mode))
+    return scm_from_bool(1);
+  return scm_from_bool(0);
+}
+
 // int get_string_from_user_with_prompt(char* str, char* prompt)
 SCM get_string_from_user_with_prompt_scm_wrapper(SCM prompt)
 {
   char str[MAXCOM];
   int x = get_string_from_user_with_prompt(str, scm_to_locale_string(prompt));
+  if (x == 0)
+    return scm_from_locale_string(str);
+  return scm_from_bool(0);
+}
+
+SCM scheme_strncmp(SCM string1, SCM string2, SCM length)
+{
+  return scm_from_int
+    (strncmp(scm_to_locale_string(string1),
+	     scm_to_locale_string(string2),
+	     scm_to_int(length))); 
+}
+
+SCM scheme_expose_filename_completion_function(SCM text, SCM state)
+{
+  // printf("within exposed function\n");
+  char *str = rl_filename_completion_function(scm_to_locale_string(text),
+					      scm_to_int(state));
+  // printf("after filename completion called\n");
+  if (str == NULL){
+    // printf("str is NULL\n");
+    return scm_from_bool(0);
+  }
+  // printf("str is not NULL\n");
   return scm_from_locale_string(str);
+}
+
+SCM scm_readline_generator_function_var;
+
+char * scheme_generator_function(char *text, int state)
+{
+  char *ret;
+  SCM res, t, s;
+  // printf("in scheme_generator_function\n");
+  SCM strf = SCM_VARIABLE_REF(scm_readline_generator_function_var);
+  // printf("pre if in scheme_generator_function\n");
+  if (scm_is_false(strf)){
+    printf("in the if in scheme_generator_function\n");
+    return ((char *) NULL);
+  }
+  // printf("post if in scheme_generator_function\n");
+  t = scm_from_locale_string(text);
+  s = scm_from_bool(state);
+  // printf("pre res set\n");
+  res = scm_apply (strf, scm_list_2(t, s), SCM_EOL);
+  // printf("res is set\n");
+  if (scm_is_false(res)){
+    return ((char *)NULL);
+  }
+  ret = scm_to_locale_string(res);
+  // printf("weve assigned ret in scheme_generator_function\n");
+  
+  return ret;
+}
+
+SCM scm_get_rl_line_buffer()
+{
+  return scm_from_locale_string(rl_line_buffer);
+}
+
+SCM scm_readline_alt_completion_function_var;
+SCM scm_readline_matches_fun;
+
+char **
+alt_completer(char *text, int start, int end)
+{
+  SCM compf = SCM_VARIABLE_REF (scm_readline_alt_completion_function_var);
+  SCM res, t, s, e;
+  int length, i;
+  char ** reter = (char **)NULL;
+  // printf("pre if statement\n");
+  if (scm_is_false (compf)){
+    // printf("completer-for-alt returned false"); 
+    return reter;
+  }
+  else {
+    // printf("compf WASNT false\n");
+    t = scm_from_locale_string(text);
+    s = scm_from_int(start);
+    e = scm_from_int(end);
+    // printf("pre scm_apply\n"); 
+    res = scm_apply (compf, scm_list_3 (t, s, e), SCM_EOL);
+    // printf("passed res = scm_apply (compf...)\n"); 
+    if (scm_is_false (res)) {
+      // printf("res is false\n"); 
+      return reter;
+    }
+    // printf("about to set reter...\n");
+    reter = rl_completion_matches(text, scheme_generator_function);
+    // printf("reter is set\n"); 
+    /* for (i = 0; i < length ; i++) {
+      reter[i] = scm_to_locale_string(scm_car(res));
+      printf(reter[i]);
+      printf("\n");
+      res = scm_cdr(res);
+    } */
+    
+    return reter ; //(reter); 
+  }
+}
+
+void log(char *text)
+{
+  FILE *log;
+  log = fopen("gash.log", "a");
+  if (log == NULL)
+    exit(1);
+  fprintf(log, text);
 }
 
 void init_gash_c()
 {
+  FILE *log;
+  log = fopen("gash.log", "w");
+  if (log == NULL)
+    exit(1);
+  fprintf(log, "beginning GASH log\n\n");
+  
+  scm_readline_generator_function_var
+    = scm_c_define("*readline-generator-function*", SCM_BOOL_F);
+  scm_readline_alt_completion_function_var
+    = scm_c_define("*readline-alt-completion-function*", SCM_BOOL_F);
+  rl_attempted_completion_function = (rl_compentry_func_t*) alt_completer;
+
+  scm_c_define_gsubr("get-line-contents", 0, 0, 0, scm_get_rl_line_buffer);
+  scm_c_define_gsubr("exposed-file-completion-function", 2, 0, 0,
+		     scheme_expose_filename_completion_function);
+  scm_c_define_gsubr
+    ("c-strncmp", 3, 0, 0, scheme_strncmp);
   scm_c_define_gsubr
     ("get-string-from-user", 0, 0, 0, get_string_from_user_scm_wrapper);
   scm_c_define_gsubr
