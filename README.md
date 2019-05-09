@@ -6,7 +6,7 @@ GASH is a shell based on guile scheme. However, its not exactly a shell. Its mor
 
 ## Installation
 
-Clone this repo, and ensure guile is installed to /usr/bin/guile. CD into the GASH directory and run ./configure. This will build libgash.so and set gash to be executable. To install, run `./configure --install`, or `./configure --install-to directory`. This will install to either /bin/gash, or		/path/provided/gash. 
+Clone this repo, and ensure guile is installed to /usr/bin/guile. CD into the GASH directory and run ./configure. This will build libgash.so and set gash to be executable. To install, run `./configure --install`, or `./configure --install-to directory`. This will install to either /bin/gash or		/path/provided/gash, respectively. 
 
 ## Usage
 
@@ -32,11 +32,14 @@ Regarding the lambda; The lambda will be called with the full command line, toke
 
 Shorthand is like the alias of GASH. The last step before un-tokenizing is to replace any shorthand with its longhand. We check every token against the list of shorthand the user has defined, and whenever we encounter one that matches it is replaced with its appropriate longhand. There is one predefined shorthand, which changes any instance of "ls" with "ls --color". If a user wants to rid themselves of this behaviore, they can run `(define-shorthand "ls" "ls")` to reset it.
 
+## Completions
+
+GASH doesnt use the regular guile readline extension, instead building a similar system within libgash.c. This allows us to be more hands on with completions. Currently, we have a set of rules for our default completions in the variable default-gash-completer. The earlier a rule occurs in the cond statement, the higher priority it is. eg if you have two conflicting rules, the first one to match is the one used. So, if a word begins with our switch followed by an opening paren, or just a paren, we use guiles apropos completion function. Otherwise, if were at the start of the line (ie working on the first word) we complete based on commands, and finally we otherwise complete based on the default file completion function. 
+
 ## Wanted Features
 
 There are a couple features we will be wanting in GASH. The following is an unordered list of wanted features. If you have an idea for implementing any of them, open a pull request.
-1. Change the completion depending on the context. IE if we type `§(` then the completions change from just the directories, to guiles apropos completion. Then, when we type the final closing paren we switch back to directories. Since readline allows us to highlight parens as were typing, id imagine this is possible. ** this is getting better! ** we can differentiate based on state and location within the line weve read so far. 
-2. More meaningful shell interaction. Write better interaction functions between shell and guile. Since the § has augmented pipes so much, it seems only right to have a $, which runs a shell command, collecting its output. This functionality is already implemented in gash-base-lib as collect-shell-command, but could be improved and gussied up. For example, send the string send in through our parser for guile, in a mutually recursive manner, so we can do `§(fun $[echo '§(otherfun $[ls -al])'])` and have everything be expanded propperly. 
+1. More meaningful shell interaction. Write better interaction functions between shell and guile. Since the § has augmented pipes so much, it seems only right to have a $, which runs a shell command, collecting its output. This functionality is already implemented in gash-base-lib as collect-shell-command, but could be improved and gussied up. For example, send the string send in through our parser for guile, in a mutually recursive manner, so we can do `§(fun $[echo '§(otherfun $[ls -al])'])` and have everything be expanded propperly. 
 
 ## Issues and Quirks
 
