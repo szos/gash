@@ -7,3 +7,19 @@
 
 (define-history-rule (lambda (txt) #t))
 
+(define-builtin "cd.."
+  (lambda (lst)
+    (chdir "..")
+    (cdr lst)))
+
+(define ($ string)
+  "splices in the resut of running "
+  (let* ((port (open-input-pipe string))
+  	 (strs (get-string-all port)))
+    (close-port port)
+    strs))
+
+
+  
+    
+  
