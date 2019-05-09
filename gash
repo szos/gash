@@ -12,27 +12,13 @@
 
 (define *suppress-error-messages* #f)
 
-;; (define log-object
-;;   (let ((log-file-port (open-file "gash.log" "w")))
-;;     (cons
-;;      (lambda (text)
-;;        (display text log-file-port) (newline log-file-port))
-;;      (lambda ()
-;;        (close-port log-file-port)))))
-
-;; (define (write-to-log text)
-;;   ((car log-object) text))
-
-;; (define (close-log-file)
-;;   ((cdr log-object)))
+(define (launch-prog)
+  (let ((re (open-input-pipe "gparted")))
+    ""))
 
 (let ((extension-path (format #f "~a/libgash.so" (getcwd)))
       (init-function "init_gash_c"))
   (load-extension extension-path init-function))
-;; (load-extension
-;;  ;; (format #f "~a/lib-c-funcs.so" (getcwd))
-;;  "/home/shozo/dev/gash/libgash.so"
-;;  "init_gash_c")
 
 ;; (define (with-attempted-completion completer thunk)
 ;;   (let ((old-comp *readline-alt-completion-function*))
@@ -77,44 +63,7 @@
 (define (string-app-list string-list)
   (apply string-append string-list))
 
-
-;; (define (parse-alg string)
-;;   (let ((strlst (string->list string))
-;; 	pre scm post post-processed)
-;;     (let section-loop ((lst strlst)
-;; 		       (accum '()))
-;;       (cond ((null? lst)
-;; 	     (set! pre (reverse accum)))
-;; 	    ((char=? (car lst) #\§)
-;; 	     (set! pre (reverse accum))
-;; 	     (set! strlst (cdr lst)))
-;; 	    (else
-;; 	     (section-loop (cdr lst) (cons (car lst) accum)))))
-;;     (let scm-loop ((lst strlst)
-;; 		   (counter 0)
-;; 		   (accum '()))
-;;       (cond ((null? lst)
-;; 	     (if (equal? counter 0)
-;; 		 (begin (set! scm (reverse accum))
-;; 			(set! post #f))
-;; 		 (throw 'malformed-scheme-section)))
-;; 	    ((char=? (car lst) #\()
-;; 	     (scm-loop (cdr lst) (+ counter 1) (cons (car lst) accum)))
-;; 	    ((char=? (car lst #\)))
-;;              (if (equal? counter 0)
-;; 		 (begin (set! scm (reverse accum))
-;; 			(set! post (cdr lst)))
-;; 		 (scm-loop (cdr lst) (- counter 1) (cons (car lst) accum))))
-;; 	    (else
-;; 	     (scm-loop (cdr lst) counter (cons (car lst) accum)))))
-;;     (unless post
-;;       (parse-alg post))))
-
-
-
-;;; parse string for guile to evaluate. 
-
-;;; "echo '§(format #f "~a" (sh "ls §(format #f \"/home\")"))"
+;;; 
 
 (define scheme-switch #\§)
 
@@ -471,12 +420,14 @@ own readline function, or return #f.  "
 	     (loop-handler))))))
 
 (define builtins-list-for-completions
+  ;; complete for builtins as well in the first position.
   (map (lambda (el)
 	 (car el))
        *builtins-alist*))
 
 (define (main)
   (load (string-append home-directory "/.gashrc"))
+  (display  "loaded ") (echo (string-append home-directory "/.gashrc"))
   (set! *all-programs* (append builtins-list-for-completions *all-programs*))
   ;; (let ((port (open-file "gash.log" "w")))
   ;;   (display "GASH logfile" port) (newline port) (newline port)
