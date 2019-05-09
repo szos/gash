@@ -1,0 +1,30 @@
+#!/usr/bin/guile \
+-l gash-base-lib -e main -s
+!#
+
+(define cc "gcc")
+(define cflags "`pkg-config --cflags readline guile-2.2`")
+(define linkdir "/bin/")
+
+(define (build-libgash)
+  (echo "compiling libgash.so")
+  (system-fmt
+   "~a ~a -shared -o libgash.so -fPIC libgash.c -l readline" cc cflags)
+  (echo "setting gash to be executable")
+  (system "chmod +x gash"))
+
+(define (main . args)
+  (if (null? (cdr (car args)))
+      (build-libgash)
+      (for-cmd-line
+       ((--install-to)
+	(set! linkdir (shift))
+	(display "installing GASH by symlinking to ")
+	(display linkdir) (newline)
+	(echo (format #f "ln ~a/gash ~a/gash" (getcwd) linkdir))
+	(system-fmt "ln ~a/gash ~a/gash" (getcwd) linkdir)
+	)
+       ((--install) (echo "installing gash, by symlinking gash to /bin/gash")
+	(build-libgash)
+	;; (system-fmt "ln ~a/gash ~a/gash" (getcwd) linkdir)
+	))))
