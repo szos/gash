@@ -14,7 +14,7 @@ Clone this repo, and ensure guile is installed to /usr/bin/guile. CD into the GA
 
 ## Usage
 
-GASH has several functionalities. Firstly, text is read in via gnu readline. Next, the scheme sections(§) are replaced. Following that, the string is split into tokens. At this point we handle builtins, which you can define. Then user defined shorthand is replaced, and finally, its executed via /bin/sh (which is sometimes symlinked to bash).
+GASH has several functionalities. Firstly, text is read in via gnu readline. Next, the scheme sections(§) are replaced. Following that, the string is split into tokens. At this point we handle builtins, which you can define. Then user defined shorthand is replaced, and finally, its executed via /bin/sh (which is sometimes symlinked to bash). If the string begins with an opening paren, it is treated as a scheme string, and its tokenized, shorthand replaced, and joined back up before being passed to guile. 
 
 GASH reads from a user directory, ~/.gashrc, where one can define whatever is needed. As GASH uses readline, ~/.inputrc is also read and respected.
 
