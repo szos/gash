@@ -144,5 +144,5 @@
    ((-qi))
    ;; (())
    )
-  (display "build with local in mind?: ")
-  (echo local?))
+  (display "build with local directory as library directory?: ")
+  (echo (if local? "yes" "no")))
