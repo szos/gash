@@ -388,8 +388,7 @@ own readline function, or return #f.  "
 	  ((char=? (string-ref prompt 0) #\()
 	   (when *history*
 	     (add-history-item prompt))
-	   ;; (eval-string prompt)
-	   )
+	   (eval-string prompt))
 	  (else
 	   (when *history*
 	     (add-history-item prompt))
@@ -425,6 +424,7 @@ own readline function, or return #f.  "
 	       ;; (display (format args))
 	       )
 	     ;; (echo args)
+	     (newline)
 	     (loop-handler))))))
 
 (define builtins-list-for-completions
