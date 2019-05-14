@@ -11,9 +11,11 @@ Because its FUN! For basic shell usage, it works just fine, same as bash, except
 ## Installation
 
 Clone this repo, and ensure guile is installed to /usr/bin/guile. CD into the GASH directory. What you do depends on how you want to install GASH; here are the flags and what they do:
+
 Commands to use/install gash:
 * --generate; --generate builds `libgash.so` and assembles gash-code.scm and history.scm into a single file which is then set to be executable. If --local is passed, it must be before --generate.
 * --install; --install does the same thing as --generate except it also installs the file made by --generate to `execdir`. if --local is passed, it must be passed before --install. First, we copy `single-file-name` to `/execdir/exececutable-name`. If local is true,thats all we do, otherwise we also copy our libraries to `libsdir`.
+
 Commands to control how we generate and install gash:
 * --local; --local should be passed to control the whether we want things to load from the git directory, or we want to load things from `libsdir`. It should also pass either a `y` or an `n` to determine whether or not to load from `libsdir`. If we dont pass local, it is assumed to be true. This flag controls the `local?` variable. 
 * --set-libsdir; this sets `libsdir` to the string following the flag. `libsdir` is the path to where our libraries will be put and loaded from if `local?` is false.
