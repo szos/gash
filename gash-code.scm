@@ -381,24 +381,32 @@ own readline function, or return #f.  "
 	 (read-attempt-comp)
 	 ))
     ;; (display "prompted text: ") (echo prompt)
-    (when *history*
-      (add-history-item prompt))
-    (when prompt ; unless (not prompt)
-      (if (string=? prompt "")
-	  (read-and-interpret)
-	  (let* ((scheme-replaced
-		  (string-app-list
-		   (eval/replace-scheme-string (extract-scheme-strings prompt))))
-		 (tokens (string-split scheme-replaced #\space))
-		 (func (assoc (car tokens)
-			      *builtins-alist*)))
-	    ;; (display "scheme replaced string: ")(echo scheme-replaced)
-	    (if func ;; if the first element is a builtin
-		(let ((strs ((cdr func) tokens)))
-		  (unless (null? strs)
-		    (system (join-strings (replace-shorthand strs) " "))))
-		(let ((longhand (replace-shorthand tokens)))
-		  (system (join-strings longhand " ")))))))))
+    (cond ((not (string? prompt))
+	   (read-and-interpret))
+	  ((string=? prompt "")
+	   (read-and-interpret))
+	  ((char=? (string-ref prompt 0) #\()
+	   (when *history*
+	     (add-history-item prompt))
+	   ;; (eval-string prompt)
+	   )
+	  (else
+	   (when *history*
+	     (add-history-item prompt))
+	   (let* ((scheme-replaced
+		   (string-app-list
+		    (eval/replace-scheme-string
+		     (extract-scheme-strings prompt))))
+		  (tokens (string-split scheme-replaced #\space))
+		  (func (assoc (car tokens)
+			       *builtins-alist*)))
+	     ;; (display "scheme replaced string: ")(echo scheme-replaced)
+	     (if func ;; if the first element is a builtin
+		 (let ((strs ((cdr func) tokens)))
+		   (unless (null? strs)
+		     (system (join-strings (replace-shorthand strs) " "))))
+		 (let ((longhand (replace-shorthand tokens)))
+		   (system (join-strings longhand " ")))))))))
 
 (define (loop-handler)
   (with-throw-handler #t
