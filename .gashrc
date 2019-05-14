@@ -1,5 +1,5 @@
 (define-shorthand "ls" "ls --color")
-
+		  
 (define (fmt string . args)
   (format #f string args))
 
@@ -13,11 +13,17 @@
     (cdr lst)))
 
 (define ($ string)
-  "splices in the resut of running "
+  "splices in the resut of running string and collecting its output. We assume
+string is a viable shell command. "
   (let* ((port (open-input-pipe string))
   	 (strs (get-string-all port)))
     (close-port port)
     strs))
+
+(define (color-fmt color string . newline)
+  (if (equal? (car newline) #f)
+      (format #f "\\033[38;5;~Am~A\\033[0m" color string)
+      (format #f "\\033[38;5;~Am~A\\033[0m\n" color string)))
 
 
   

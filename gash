@@ -1,6 +1,11 @@
 #!/usr/bin/guile \
--l /usr/local/lib/gash-base-lib
+-l /usr/local/lib/gash-base-lib -e main -s
 !#
+
+;; (let ((extension-path (format #f "/usr/local/lib/libgash.so" ;; (getcwd)
+;; 			      ))
+;;       (init-function "init_gash_c"))
+;;   (load-extension extension-path init-function))
 
 (use-modules (ice-9 format)
 	     (ice-9 popen)
@@ -10,18 +15,7 @@
 	     (ice-9 regex)
 	     (ice-9 buffered-input))
 
-;; (let ((ext "/usr/local/lib/")
-;;       (init-function "init_gash_c"))
-;;   ;; (load-extension extension-path init-function)
-;;   (load (string-append ext "gash-base-lib"))
-;;   (load (string-append ext )))
-
 (define *suppress-error-messages* #f)
-
-(let ((extension-path (format #f "/usr/local/lib/libgash.so" ;; (getcwd)
-			      ))
-      (init-function "init_gash_c"))
-  (load-extension extension-path init-function))
 
 ;; (define (with-attempted-completion completer thunk)
 ;;   (let ((old-comp *readline-alt-completion-function*))
@@ -32,7 +26,7 @@
 ;;       (lambda ()
 ;; 	(set! *readline-alt-completion-function* old-comp)))))
 
-(load "/usr/local/lib/history.scm")
+;; (load "/usr/local/lib/history.scm")
 
 (define home-directory 
   (let* ((port (open-input-pipe "echo $HOME"))
@@ -139,21 +133,11 @@
 
 ;;; end guile parsing.
 
-(define (sh . string) 
-  (let ((expanded
-	 (string-app-list (eval/replace-scheme-string
-			   (extract-scheme-strings string)))))
-    
-    (let ((s (collect-shell-command expanded #t #t)))
-      s))
-  ;; (let ((port (open-input-pipe string))
-  ;; 	(strs (get-string-all port)))
-  ;;   (close-port port)
-  ;;   (let ((expanded
-  ;; 	   (string-app-list (eval/replace-scheme-string
-  ;; 			     (extract-scheme-strings strs)))))
-  ;;     expanded))
-  )
+(define (sh . string)
+  (let* ((port (open-input-pipe string))
+  	 (strs (get-string-all port)))
+    (close-port port)
+    strs))
 
 (define ($ string)
   (let ((s (collect-shell-command string #t #t)))
@@ -388,28 +372,22 @@ own readline function, or return #f.  "
     ;; (display "prompted text: ") (echo prompt)
     (when *history*
       (add-history-item prompt))
-    (unless (not prompt)
-      (cond ((string=? prompt "")
-	     (read-and-interpret))
-	    ((char=? (string-ref 0 prompt) #\()
-	     (let ((tokens (string-split prompt #\space)))
-	       (eval-string (join-strings (replace-shorthand tokens) " ")))
-	     (eval-string prompt))
-	    (else
-	     (let* ((scheme-replaced
-		     (string-app-list
-		      (eval/replace-scheme-string
-		       (extract-scheme-strings prompt))))
-		    (tokens (string-split scheme-replaced #\space))
-		    (func (assoc (car tokens)
-				 *builtins-alist*)))
-	       ;; (display "scheme replaced string: ")(echo scheme-replaced)
-	       (if func ;; if the first element is a builtin
-		   (let ((strs ((cdr func) tokens)))
-		     (unless (null? strs)
-		       (system (join-strings (replace-shorthand strs) " "))))
-		   (let ((longhand (replace-shorthand tokens)))
-		     (system (join-strings longhand " "))))))))))
+    (when prompt ; unless (not prompt)
+      (if (string=? prompt "")
+	  (read-and-interpret)
+	  (let* ((scheme-replaced
+		  (string-app-list
+		   (eval/replace-scheme-string (extract-scheme-strings prompt))))
+		 (tokens (string-split scheme-replaced #\space))
+		 (func (assoc (car tokens)
+			      *builtins-alist*)))
+	    ;; (display "scheme replaced string: ")(echo scheme-replaced)
+	    (if func ;; if the first element is a builtin
+		(let ((strs ((cdr func) tokens)))
+		  (unless (null? strs)
+		    (system (join-strings (replace-shorthand strs) " "))))
+		(let ((longhand (replace-shorthand tokens)))
+		  (system (join-strings longhand " ")))))))))
 
 (define (loop-handler)
   (with-throw-handler #t
@@ -424,7 +402,9 @@ own readline function, or return #f.  "
 	       (display-color 1 "ERROR:  ")
 	       (display key) (display ", ")
 	       (map (lambda (el) (display el) (display ", ")) args)
-	       (newline))
+	       ;; (newline)
+	       ;; (display (format args))
+	       )
 	     ;; (echo args)
 	     (loop-handler))))))
 
@@ -434,7 +414,7 @@ own readline function, or return #f.  "
 	 (car el))
        *builtins-alist*))
 
-(define (main)
+(define (main . args)
   (load (string-append home-directory "/.gashrc"))
   (display  "loaded ") (echo (string-append home-directory "/.gashrc"))
   (set! *all-programs* (append builtins-list-for-completions *all-programs*))
@@ -443,5 +423,4 @@ own readline function, or return #f.  "
   ;;   (close-port port))
   (loop-handler))
 
-(main)
 
