@@ -1,11 +1,22 @@
 #!/usr/bin/guile \
--l /usr/local/lib/gash-base-lib -e main -s
+-l gash-base-lib -e main -s
 !#
 
-;; (let ((extension-path (format #f "/usr/local/lib/libgash.so" ;; (getcwd)
-;; 			      ))
-;;       (init-function "init_gash_c"))
-;;   (load-extension extension-path init-function))
+
+;; this let statement is to determine if gash is installed, or if it is already
+;; loading extensions and libs. we initially load gash-base-lib, and then we
+;; check if a variable placed in by ./conf exists. if it does, we dont need to
+;; load anything. otherwise we need to load libgash.so and history.scm from the
+;; local directory. 
+(let ((extension-path (format #f "~a/libgash.so" (getcwd)))
+      (init-function "init_gash_c"))
+  (catch 'unbound-variable
+    (lambda ()
+      (unless header-loads-libgash
+	(load-extension extension-path init-function)))
+    (lambda (key . args)
+      (load-extension extension-path init-function)
+      (load "history.scm"))))
 
 (use-modules (ice-9 format)
 	     (ice-9 popen)
