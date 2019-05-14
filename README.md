@@ -10,7 +10,7 @@ Because its FUN! For basic shell usage, it works just fine, same as bash, except
 
 ## Installation
 
-Clone this repo, and ensure guile is installed to /usr/bin/guile. CD into the GASH directory. What you do depends on how you want to install GASH; here are the flags and what they do:
+Clone this repo, and ensure guile is installed to /usr/bin/guile. CD into the GASH directory. What you do depends on how you want to install GASH; If you just want to try it out, make gash-code.scm executable and run it. If you want to install it, here are the flags and what they do:
 
 Commands to use/install gash:
 * --generate; --generate builds `libgash.so` and assembles gash-code.scm and history.scm into a single file which is then set to be executable. If --local is passed, it must be before --generate.
