@@ -10,6 +10,11 @@ Because its FUN! For basic shell usage, it works just fine, same as bash, except
 
 ## Installation
 
+Clone this repo, and ensure guile is installed to /usr/bin/guile. CD into the GASH directory. What you do depends on how you want to install GASH; here are the flags and what they do:
+* --local; --local should be passed to control the whether we want things to load from the git directory, or we want to load things from `libsdir`
+* --
+
+
 Clone this repo, and ensure guile is installed to /usr/bin/guile. CD into the GASH directory and run ./configure. This will build libgash.so and set gash to be executable. To install, run `./configure --install`. This will install GASH to /usr/local/bin/gash and the libraries to /usr/local/lib/. This will put GASH into the PATH, allowing you to run it anywhere. The first time you run GASH, it will be compiled to guile scheme VM code, which takes a second or two. 
 
 ## Usage
