@@ -23,6 +23,10 @@
 (define-macro (system-fmt str . fmt)
   `(system (format #f ,str ,@fmt)))
 
+(define (with-term-color color text)
+  (format "'\\033[38;5;~Am~A\\033[0m'")
+  )
+
 (define (display-color color-number string)
   "this is for terminal output, it prints a string in the specified 24bit color."
   (system-fmt "printf '\\033[38;5;~Am~A\\033[0m'" color-number string))

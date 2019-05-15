@@ -368,11 +368,39 @@ own readline function, or return #f.  "
 (define (read-test)
   (read-with-prompt (generate-prompt)))
 
-(define (read-attempt-comp)
+(define (attempt-scheme-correction text key args)
+  (display-color 9 "Error in evaluation!\n")
+  (display-color 9 "Error Key:  ") ; (format #f "Error Key:  ~a\n" key)
+  (display key) (newline)
+  (display-color 3 "Error Args:  ") ; (format #f "Error Args:  ~a\n" args)
+  (display args) (newline)
+  (display-color 2 "attempted evaluation: ") (display text)
+  (newline)
+  (display-color 3 "enter corrected sexp: ")
+  (let ((fixed-sexp (read-line)))
+    (cond ((or (string=? fixed-sexp "quit")
+	       (string=? fixed-sexp "exit")
+	       (string=? fixed-sexp "break")
+	       (string=? fixed-sexp ""))
+	   (throw 'exited-correction "exited correction attempt "))
+	  (else
+	   (catch #t
+	     (lambda ()
+	       (eval-string fixed-sexp)
+	       (when *history*
+		 (add-history-item prompt)))
+	     (lambda (key . args)
+	       ;; (display-color 9 "Evaluation Failed. Again. ")
+	       (throw 'correction-failure
+		      "The corrected text also failed. ")))))))
+
+(define (read-attempt-comp . prompt)
   ;; (set! *readline-alt-completion-function* completer-for-alt)
   ;; (set! *readline-alt-completion-function* completer-switch)
   (set! *readline-alt-completion-function* default-gash-completer)
-  (read-with-prompt (generate-prompt)))
+  (read-with-prompt (if (null? prompt)
+			(generate-prompt)
+			(car prompt))))
 
 (define (read-and-interpret)
   ;; (echo "main-loop")
@@ -386,9 +414,33 @@ own readline function, or return #f.  "
 	  ((string=? prompt "")
 	   (read-and-interpret))
 	  ((char=? (string-ref prompt 0) #\()
-	   (when *history*
-	     (add-history-item prompt))
-	   (eval-string prompt))
+	   (catch #t
+	     (lambda ()
+	       (eval-string prompt)
+	       (when *history*
+		 (add-history-item prompt)))
+	     (lambda (key . args)
+	       (attempt-scheme-correction prompt key args)
+	       ;; (display-color 9 "Error in evaluation!\n")
+	       ;; (display-color 9 (format #f "Error Key:  ~a\n" key)) 
+	       ;; (display-color 3 (format #f "Error Args:  ~a\n" args))
+	       ;; (display-color 2 "attempted evaluation: ") (display prompt)
+	       ;; (newline)
+	       ;; (display-color 3 "enter corrected sexp: ")
+	       ;; (let ((fixed-sexp (read-line)))
+	       ;; 	 (cond ((or (string=? fixed-sexp "quit")
+	       ;; 		    (string=? fixed-sexp "exit")
+	       ;; 		    (string=? fixed-sexp "break")
+	       ;; 		    (string=? fixed-sexp ""))
+	       ;; 		(throw 'exited-correction "exited correction attempt "))
+	       ;; 	       (else
+	       ;; 		(catch #t
+	       ;; 		  (lambda () (eval-string fixed-sexp))
+	       ;; 		  (lambda (key . args)
+	       ;; 		    (display-color 9 "Evaluation Failed. Again. ")
+	       ;; 		    (throw 'correction-failure
+	       ;; 			   "The corrected text also failed. "))))))
+	       )))
 	  (else
 	   (when *history*
 	     (add-history-item prompt))
@@ -408,7 +460,7 @@ own readline function, or return #f.  "
 		   (system (join-strings longhand " ")))))))))
 
 (define (loop-handler)
-  (with-throw-handler #t
+  (catch #t
     (lambda ()
       (while 1
 	(read-and-interpret)))
@@ -418,8 +470,10 @@ own readline function, or return #f.  "
 	    (else
 	     (unless *suppress-error-messages*
 	       (display-color 1 "ERROR:  ")
-	       (display key) (display ", ")
-	       (map (lambda (el) (display el) (display ", ")) args)
+	       (display key) (display ", \n")
+	       (display-color 9 "REPORT:  ")
+	       (display (car args))
+	       (map (lambda (el) (display ", ") (display el)) (cdr args))
 	       ;; (newline)
 	       ;; (display (format args))
 	       )
