@@ -410,8 +410,7 @@ own readline function, or return #f.  "
   (display-color 2 "attempted evaluation: ") (display text)
   (newline)
   (display-color 3 "enter corrected sexp: ")
-  (let ((fixed-sexp (read-line))
-	(flag #f))
+  (let ((fixed-sexp (read-line)))
     (cond ((or (string=? fixed-sexp "quit")
 	       (string=? fixed-sexp "exit")
 	       (string=? fixed-sexp "break")
@@ -421,20 +420,8 @@ own readline function, or return #f.  "
 	   ((lambda ()
 	       (eval-string fixed-sexp)
 	       (when *history*
-		 (add-history-item prompt))
-	       (set! flag #t)))
-	   ;; (with-throw-handler #t
-	   ;;   (lambda ()
-	   ;;     (eval-string fixed-sexp)
-	   ;;     (when *history*
-	   ;; 	 (add-history-item prompt))
-	   ;;     (set! flag #t))
-	   ;;   (lambda (key . args)
-	   ;;     ;; (display-color 9 "Evaluation Failed. Again. ")
-	   ;;     (unless flag
-	   ;; 	 (throw 'correction-failure
-	   ;; 		"The corrected text also failed. "))))
-	   ))))
+		 (add-history-item fixed-sexp))
+	       (supress-next-error)))))))
 
 (define (read-attempt-comp . prompt)
   ;; (set! *readline-alt-completion-function* completer-for-alt)
@@ -451,11 +438,9 @@ own readline function, or return #f.  "
 	 ))
     ;; (display "prompted text: ") (echo prompt)
     (cond ((not (string? prompt))
-           ;; (set! *suppress-error-messages-temp* #t)
 	   (supress-next-error)
 	   (throw 'prompt-error "input read is not a string"))
 	  ((string=? prompt "")
-	   ;; (set! *suppress-error-messages-temp* #t)
 	   (supress-next-error)
 	   (throw 'prompt-error "input read is empty"))
 	  ((char=? (string-ref prompt 0) #\()
