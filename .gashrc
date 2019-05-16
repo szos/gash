@@ -20,6 +20,13 @@ string is a viable shell command. "
     (close-port port)
     strs))
 
+(define (./ command . args)
+  "command is a command, optionally with formatters contained therin, which gets
+run through ./ via the shell. This is a little ./ mechanism to run something within an sexp. "
+  (if (null? args)
+      (system (string-append "./" command))
+      (system (string-append "./" (apply format `(#f ,command ,@args))))))
+
 (define (color-fmt color string . newline)
   (if (equal? (car newline) #f)
       (format #f "\\033[38;5;~Am~A\\033[0m" color string)
