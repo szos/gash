@@ -27,6 +27,7 @@
 	     (ice-9 buffered-input))
 
 (define *suppress-error-messages* #f)
+(define *suppress-error-messages-temp* #f)
 
 ;; (define (with-attempted-completion completer thunk)
 ;;   (let ((old-comp *readline-alt-completion-function*))
@@ -316,30 +317,62 @@ in the line (meaning the final space to the end of the line)"
 
 (define default-gash-completer
   (make-completer
-   (cond ((string-prefix? default-gash-begin-scheme-string current-word)
+   (cond ((equal? start 0)
+	  (cond ((string-prefix? "(" current-word)
+		 (set! *readline-alt-completion-function* gash-apropos-completer)
+		 (set! *readline-generator-function*
+		   apropos-completion-function-test))
+		(else
+		 (set! *readline-generator-function*
+		   commands-completion-function)))
+	  #t)
+	 ((string-prefix? default-gash-begin-scheme-string current-word)
 	  (set! *readline-generator-function* apropos-completion-function-test)
 	  #t)
 	 ((string-prefix? "(" current-word)
 	  (set! *readline-generator-function* apropos-completion-function-test)
 	  #t)
-	 ((equal? start 0)
-	  (set! *readline-generator-function* commands-completion-function)
-	  #t)
+	 ;; (())
 	 (else #f))))
 
+(define (gash-apropos-completer text start end)
+  (set! *readline-generator-function* apropos-completion-function-test)
+  #t)
+
+(define gash-apropos-switch #f)
+
 (define (completer-switch text start end)
-  (let* ((line (get-line-contents))
-	 (split-line (string-split line #\space))
-	 (current-word (last split-line)))
-    (cond ((string-prefix? "§(" current-word)
+  (let* ((split-line-rev (reverse (string-split (get-line-contents) #\space)))
+	 (current-word ;; (last (string-split (get-line-contents) #\space))
+	  (car split-line-rev))
+	 (prev-word (if (< 1 (length split-line-rev))
+			(car (cdr split-line-rev))
+			#f))
+	 ;; (prev-word (second split-line-rev))
+	 )
+    (cond ((equal? start 0) 
+	   (set! *readline-generator-function* commands-completion-function)
+	   #t)
+	  ((equal? start 1)
+	   (cond ((string-prefix? "(" current-word)
+		  (set! *readline-alt-completion-function*
+		    gash-apropos-completer)
+		  (set! *readline-generator-function*
+		    apropos-completion-function-test)
+		  ;; (set! gash-apropos-switch #t)
+		  )
+		 (else
+		  (set! *readline-generator-function*
+		    commands-completion-function)))
+	   #t)
+	  ((string-prefix? default-gash-begin-scheme-string current-word)
 	   (set! *readline-generator-function* apropos-completion-function-test)
 	   #t)
 	  ((string-prefix? "(" current-word)
 	   (set! *readline-generator-function* apropos-completion-function-test)
 	   #t)
-	  ((equal? start 0)
-	   (set! *readline-generator-function* commands-completion-function)
-	   #t)
+	  ((string=? prev-word "($")
+	   (set! *readline-generator-function* commands-completion-function))
 	  (else #f))))
 
 (define (completer-for-alt text start end)
@@ -377,27 +410,36 @@ own readline function, or return #f.  "
   (display-color 2 "attempted evaluation: ") (display text)
   (newline)
   (display-color 3 "enter corrected sexp: ")
-  (let ((fixed-sexp (read-line)))
+  (let ((fixed-sexp (read-line))
+	(flag #f))
     (cond ((or (string=? fixed-sexp "quit")
 	       (string=? fixed-sexp "exit")
 	       (string=? fixed-sexp "break")
 	       (string=? fixed-sexp ""))
 	   (throw 'exited-correction "exited correction attempt "))
 	  (else
-	   (catch #t
-	     (lambda ()
+	   ((lambda ()
 	       (eval-string fixed-sexp)
 	       (when *history*
-		 (add-history-item prompt)))
-	     (lambda (key . args)
-	       ;; (display-color 9 "Evaluation Failed. Again. ")
-	       (throw 'correction-failure
-		      "The corrected text also failed. ")))))))
+		 (add-history-item prompt))
+	       (set! flag #t)))
+	   ;; (with-throw-handler #t
+	   ;;   (lambda ()
+	   ;;     (eval-string fixed-sexp)
+	   ;;     (when *history*
+	   ;; 	 (add-history-item prompt))
+	   ;;     (set! flag #t))
+	   ;;   (lambda (key . args)
+	   ;;     ;; (display-color 9 "Evaluation Failed. Again. ")
+	   ;;     (unless flag
+	   ;; 	 (throw 'correction-failure
+	   ;; 		"The corrected text also failed. "))))
+	   ))))
 
 (define (read-attempt-comp . prompt)
   ;; (set! *readline-alt-completion-function* completer-for-alt)
   ;; (set! *readline-alt-completion-function* completer-switch)
-  (set! *readline-alt-completion-function* default-gash-completer)
+  (set! *readline-alt-completion-function* completer-switch)
   (read-with-prompt (if (null? prompt)
 			(generate-prompt)
 			(car prompt))))
@@ -405,14 +447,15 @@ own readline function, or return #f.  "
 (define (read-and-interpret)
   ;; (echo "main-loop")
   (let ((prompt ;; (get-string-from-user)
-	 ;; (read-with-prompt (generate-prompt))
 	 (read-attempt-comp)
 	 ))
     ;; (display "prompted text: ") (echo prompt)
     (cond ((not (string? prompt))
-	   (read-and-interpret))
+           ;; (set! *suppress-error-messages-temp* #t)
+	   (throw 'prompt-error "input read is not a string"))
 	  ((string=? prompt "")
-	   (read-and-interpret))
+	   (set! *suppress-error-messages-temp* #t)
+	   (throw 'prompt-error "input read is empty"))
 	  ((char=? (string-ref prompt 0) #\()
 	   (catch #t
 	     (lambda ()
@@ -420,27 +463,7 @@ own readline function, or return #f.  "
 	       (when *history*
 		 (add-history-item prompt)))
 	     (lambda (key . args)
-	       (attempt-scheme-correction prompt key args)
-	       ;; (display-color 9 "Error in evaluation!\n")
-	       ;; (display-color 9 (format #f "Error Key:  ~a\n" key)) 
-	       ;; (display-color 3 (format #f "Error Args:  ~a\n" args))
-	       ;; (display-color 2 "attempted evaluation: ") (display prompt)
-	       ;; (newline)
-	       ;; (display-color 3 "enter corrected sexp: ")
-	       ;; (let ((fixed-sexp (read-line)))
-	       ;; 	 (cond ((or (string=? fixed-sexp "quit")
-	       ;; 		    (string=? fixed-sexp "exit")
-	       ;; 		    (string=? fixed-sexp "break")
-	       ;; 		    (string=? fixed-sexp ""))
-	       ;; 		(throw 'exited-correction "exited correction attempt "))
-	       ;; 	       (else
-	       ;; 		(catch #t
-	       ;; 		  (lambda () (eval-string fixed-sexp))
-	       ;; 		  (lambda (key . args)
-	       ;; 		    (display-color 9 "Evaluation Failed. Again. ")
-	       ;; 		    (throw 'correction-failure
-	       ;; 			   "The corrected text also failed. "))))))
-	       )))
+	       (attempt-scheme-correction prompt key args))))
 	  (else
 	   (when *history*
 	     (add-history-item prompt))
@@ -468,17 +491,17 @@ own readline function, or return #f.  "
       (cond ((equal? key 'quit)
 	     (exit))
 	    (else
-	     (unless *suppress-error-messages*
-	       (display-color 1 "ERROR:  ")
-	       (display key) (display ", \n")
-	       (display-color 9 "REPORT:  ")
-	       (display (car args))
-	       (map (lambda (el) (display ", ") (display el)) (cdr args))
-	       ;; (newline)
-	       ;; (display (format args))
-	       )
-	     ;; (echo args)
-	     (newline)
+	     ;; (display "caught!\n")
+	     (if (and (not *suppress-error-messages-temp*)
+		      (not *suppress-error-messages*))
+		 (begin
+		   (display-color 1 "ERROR:  ")
+		   (display key) (display ", \n")
+		   (display-color 9 "REPORT:  ")
+		   (display (car args))
+		   (map (lambda (el) (display ", ") (display el)) (cdr args))
+		   (newline))
+		 (set! *suppress-error-messages-temp* #f))
 	     (loop-handler))))))
 
 (define builtins-list-for-completions
