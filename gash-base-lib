@@ -24,8 +24,87 @@
   `(system (format #f ,str ,@fmt)))
 
 (define (with-term-color color text)
-  (format "'\\033[38;5;~Am~A\\033[0m'")
-  )
+  (format #f "'\\033[38;5;~Am~A\\033[0m'" color text))
+
+(define (open-term-color color)
+  (format #f "\\033[38;5;~Am" color))
+
+(define (close-term-color)
+  (format #f "\\033[0m"))
+
+(define *parse-color-switch-string* "#^")
+
+(define *default-parse-color* 10)
+
+(define *number-characters* '(#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9))
+
+(define (loop-for-colors str-lst accum)
+  (cond ((null? str-lst)
+	 (string-append (list->string (reverse accum))
+			(close-term-color)))
+	((prefix? (string->list *parse-color-switch-string*) str-lst)
+	 (let ((1st-digit (car (list-tail
+				str-lst (string-length
+					 *parse-color-switch-string*))))
+	       (2nd-digit (car (list-tail str-lst
+					  (+ 1
+					     (string-length
+					      *parse-color-switch-string*)))))
+	       (3rd-digit (car (list-tail str-lst
+					  (+ 2
+					     (string-length
+					      *parse-color-switch-string*))))))
+	   (cond ((not (member 1st-digit *number-characters*))
+		  (throw 'unknown-color "in parse-string-for-color, a valid color number wasnt passed. "))
+		 ((and (member 2nd-digit *number-characters*)
+		       (member 3rd-digit *number-characters*))
+		  (let* ((sss (string-append (close-term-color)
+					     (open-term-color
+					      (string->number
+					       (list->string
+						(list 1st-digit 2nd-digit
+						      3rd-digit))))))
+			 (scs (reverse (string->list sss))))
+		    (loop-for-colors
+		     (list-tail
+		      str-lst (+ 3
+				 (string-length *parse-color-switch-string*)))
+		     (append scs accum))))
+		 ((member 2nd-digit *number-characters*)
+		  (let* ((sss (string-append (close-term-color)
+					     (open-term-color
+					      (string->number
+					       (list->string
+						(list 1st-digit 2nd-digit))))))
+			 (scs (reverse (string->list sss))))
+		    (loop-for-colors
+		     (list-tail
+		      str-lst (+ 2
+				 (string-length *parse-color-switch-string*)))
+		     (append scs accum))))
+		 (else
+		  (let* ((sss (string-append (close-term-color)
+					     (open-term-color
+					      (string->number
+					       (list->string
+						(list 1st-digit))))))
+			 (scs (reverse (string->list sss))))
+		    (loop-for-colors
+		     (list-tail
+		      str-lst (+ 1
+				 (string-length *parse-color-switch-string*)))
+		     (append scs accum)))))))
+	(else
+	 (loop-for-colors (cdr str-lst) (cons (car str-lst) accum)))))
+
+(define (parse-string-for-color string-to-parse . args)
+  (apply format (append (list #f (loop-for-colors
+				  (string->list
+				   (string-append
+				    (open-term-color *default-parse-color*)
+				    string-to-parse))
+				  '()))
+			args)))
 
 (define (display-color color-number string)
   "this is for terminal output, it prints a string in the specified 24bit color."
@@ -109,9 +188,7 @@
 (define-macro (ninth thing)
   `(caddr (cdddr (cdddr ,thing))))
 (define (last l)
-  (if (null? (cdr l))
-      (car l)
-      (last (cdr l))))
+  (last-pair l))
 
 ;; (define-syntax run-bash-command
 ;;   (syntax-rules ()
