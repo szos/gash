@@ -28,6 +28,8 @@
 
 (define *suppress-error-messages* #f)
 (define *suppress-error-messages-temp* #f)
+(define (supress-next-error)
+  (set! *suppress-error-messages-temp* #t))
 
 ;; (define (with-attempted-completion completer thunk)
 ;;   (let ((old-comp *readline-alt-completion-function*))
@@ -338,8 +340,6 @@ in the line (meaning the final space to the end of the line)"
 (define (gash-apropos-completer text start end)
   (set! *readline-generator-function* apropos-completion-function-test)
   #t)
-
-(define gash-apropos-switch #f)
 
 (define (completer-switch text start end)
   (let* ((split-line-rev (reverse (string-split (get-line-contents) #\space)))
