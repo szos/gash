@@ -452,9 +452,11 @@ own readline function, or return #f.  "
     ;; (display "prompted text: ") (echo prompt)
     (cond ((not (string? prompt))
            ;; (set! *suppress-error-messages-temp* #t)
+	   (supress-next-error)
 	   (throw 'prompt-error "input read is not a string"))
 	  ((string=? prompt "")
-	   (set! *suppress-error-messages-temp* #t)
+	   ;; (set! *suppress-error-messages-temp* #t)
+	   (supress-next-error)
 	   (throw 'prompt-error "input read is empty"))
 	  ((char=? (string-ref prompt 0) #\()
 	   (catch #t
