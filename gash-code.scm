@@ -7,14 +7,19 @@
 ;; loading extensions and libs. we initially load gash-base-lib, and then we
 ;; check if a variable placed in by ./conf exists. if it does, we dont need to
 ;; load anything. otherwise we need to load libgash.so and history.scm from the
-;; local directory. 
+;; local directory.
+(define library-dir #f)
+(define *this-executable-script* #f)
 (let ((extension-path (format #f "~a/libgash.so" (getcwd)))
       (init-function "init_gash_c"))
   (catch 'unbound-variable
     (lambda ()
-      (unless header-loads-libgash
-	(load-extension extension-path init-function)))
+      (if (not header-loads-libgash)
+	  (begin (load-extension extension-path init-function)
+		 (set! library-dir (getcwd)))
+	  (set! library-dir header-loads-libgash)))
     (lambda (key . args)
+      (set! library-dir (getcwd))
       (load-extension extension-path init-function)
       (load "history.scm"))))
 
@@ -203,8 +208,16 @@
     ("exit" . ,(lambda (lst)
 		 (exit 0)))
     ("reload" . ,(lambda (lst)
-		   (echo "Loading .gashrc")
+		   (echof "#^1loading#^2 gash-base-lib#^^, #^3gash#^^, and #^4.gashrc")
+		   ;; (echo "Loading .gashrc")
+		   (load (format #f "~a/gash-base-lib" library-dir
+				 ;; (if (not header-loads-libgash)
+				 ;; 		     home-directory
+				 ;; 		     header-loads-libgash)
+				 ))
+		   (load *this-executable-script*)
 		   (load (format #f "~a/.gashrc" home-directory))
+		   ;; (echof "#^10loading#^2 gash-base-lib #^^and #^3.gashrc")
 		   '()))))
 
 (define (define-builtin name lambda)
@@ -410,7 +423,8 @@ own readline function, or return #f.  "
   (display-color 2 "attempted evaluation: ") (display text)
   (newline)
   (display-color 3 "enter corrected sexp: ")
-  (let ((fixed-sexp (read-line)))
+  (let ((fixed-sexp (with-completer completer-switch
+				    (read-line))))
     (cond ((or (string=? fixed-sexp "quit")
 	       (string=? fixed-sexp "exit")
 	       (string=? fixed-sexp "break")
@@ -418,10 +432,27 @@ own readline function, or return #f.  "
 	   (throw 'exited-correction "exited correction attempt "))
 	  (else
 	   ((lambda ()
-	       (eval-string fixed-sexp)
-	       (when *history*
-		 (add-history-item fixed-sexp))
-	       (supress-next-error)))))))
+	      (eval-string fixed-sexp)
+	      (when *history*
+		(add-history-item fixed-sexp))
+	      (supress-next-error)))))))
+
+(define-macro (with-completer completer thunk)
+  `(let ((old-completer *readline-alt-completion-function*))
+     (dynamic-wind
+       (lambda ()
+	 (set! *readline-alt-completion-function* ,completer))
+       ,thunk
+       (lambda ()
+	 (set! *readline-alt-completion-function* old-completer)))))
+
+(define (read-with-completion . prompt)
+  (with-completer
+   completer-switch
+   (lambda ()
+     (read-with-prompt (if (null? prompt)
+			   (generate-prompt)
+			   (car prompt))))))
 
 (define (read-attempt-comp . prompt)
   ;; (set! *readline-alt-completion-function* completer-for-alt)
@@ -433,8 +464,10 @@ own readline function, or return #f.  "
 
 (define (read-and-interpret)
   ;; (echo "main-loop")
-  (let ((prompt ;; (get-string-from-user)
-	 (read-attempt-comp)
+  (let ((prompt
+	 ;; (get-string-from-user)
+	 ;;(read-attempt-comp)
+	 (read-with-completion)
 	 ))
     ;; (display "prompted text: ") (echo prompt)
     (cond ((not (string? prompt))
@@ -497,7 +530,14 @@ own readline function, or return #f.  "
 	 (car el))
        *builtins-alist*))
 
-(define (main . args)
+(define (main args)
+  (printf "#^9arguments passed in:  ")
+  (echo args)
+  ;; (set! *this-executable-script* (car args))
+  (if (char=? (string-ref (car args) 0) #\.)
+      (set! *this-executable-script* (string-append (getcwd) (car args)))
+      (set! *this-executable-script* (car args)))
+  (echo *this-executable-script*)
   (load (string-append home-directory "/.gashrc"))
   (display  "loaded ") (echo (string-append home-directory "/.gashrc"))
   (set! *all-programs* (append builtins-list-for-completions *all-programs*))
