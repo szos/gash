@@ -97,6 +97,33 @@ int get_string_from_user_with_prompt(char* str, char* prompt)
   }
 }
 
+int get_string_from_user_without_prompt(char* str)
+{
+  char* buffer;
+  char* directory;
+  // char* username = getenv("USER");
+  // readline uses \001 and \002 to determine what should be counted when
+  // counting the prompt characters. 
+  // char* printer = cat3("[\001\033[38;5;6m\002", prompt, "\001\033[m\002]» ");
+  // dont forget to free printer - its cat-ed so we need to free it. 
+  fflush(stdout);
+  // printf("in read-with-prompt, before reading\n");
+  buffer = readline("");
+  // printf("after reading\n");
+  // buffer = readline ("prompt"); 
+    
+  // free(printer);
+  if (buffer == NULL){
+    return 1;}
+  if (strlen(buffer) != 0) {
+    add_history(buffer);
+    strcpy(str, buffer);
+    return 0;
+  } else {
+    return 1;
+  }
+}
+
 /*
 char **command_generator(const char *text, int state)
 {
@@ -157,6 +184,15 @@ SCM is_string_directory(SCM path)
     return scm_from_bool(0);
   if (exists == 0 && S_ISDIR(sb.st_mode))
     return scm_from_bool(1);
+  return scm_from_bool(0);
+}
+
+SCM get_string_from_user_without_prompt_scm_wrapper()
+{
+  char str[MAXCOM];
+  int x = get_string_from_user_without_prompt(str);
+  if (x == 0)
+    return scm_from_locale_string(str);
   return scm_from_bool(0);
 }
 
@@ -307,6 +343,9 @@ void init_gash_c()
     ("get-string-from-user", 0, 0, 0, get_string_from_user_scm_wrapper);
   scm_c_define_gsubr
     ("read-with-prompt", 1, 0, 0, get_string_from_user_with_prompt_scm_wrapper);
+  scm_c_define_gsubr
+    ("read-without-prompt", 0, 0, 0,
+     get_string_from_user_without_prompt_scm_wrapper);
   scm_c_define_gsubr
     ("directory?", 1, 0, 0, is_string_directory);
 }
