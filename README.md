@@ -11,9 +11,9 @@ Because its FUN! For basic shell usage, it works just fine, same as bash, except
 ## Installation
 
 Clone this repo, and ensure guile is installed to /usr/bin/guile. CD into the GASH directory. What you do depends on how you want to install GASH; If you just want to try it out, make gash-code.scm executable and run it. If you want to install it, heres some example commands:
-`./conf --install` this will assemble gash together and install it, and load the required libraries from the current directory. If this directory is deleted it will fail to load.
+`./generate --install` this will assemble gash together and install it, and load the required libraries from the current directory. If this directory is deleted it will fail to load.
 
-`./conf --local no --install` This will do the same as above, but install the libraries as well. 
+`./generate --local no --install` This will do the same as above, but install the libraries as well. 
 
 here are the flags and what they do:
 
