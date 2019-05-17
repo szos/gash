@@ -27,6 +27,18 @@ run through ./ via the shell. This is a little ./ mechanism to run something wit
       (system (string-append "./" command))
       (system (string-append "./" (apply format `(#f ,command ,@args))))))
 
+;; (define-macro (./ . command-and-args)
+;;   "command MUST be a single string, no spaces. args must be separated by spaces. 
+;; some characters are illegal... look at the reference for more info ;; (needs to
+;; be filled out). "
+;;   (cond ((null? command-and-args)
+;; 	 (echo "./ is a directory"))
+;; 	(else
+;; 	 (let ((cmd-and-args (map (lambda (el)
+;; 				    (symbol->string el))
+;; 				  command-and-args)))
+;; 	   ()))))
+
 (define (color-fmt color string . newline)
   (if (equal? (car newline) #f)
       (format #f "\\033[38;5;~Am~A\\033[0m" color string)
