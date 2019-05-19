@@ -186,35 +186,35 @@
 ;; (define-macro ($ string))
 
 (define *builtins-alist*
-  `(("cd" . ,(lambda (lst)
-	       (cond ((null? (cdr lst))
-		      (chdir home-directory)
-		      '())
-		     ((string=? (second lst) "~/")
-		      (begin (chdir home-directory)
-			     (cddr lst)))
-		     ((string=? (second lst) "")
-		      (begin (chdir home-directory)
-			     '()))
-		     ((directory? (cadr lst))
-		      (begin (chdir (cadr lst))
-			     (cddr lst)))
-		     (else
-		      (let cd-loop ((dir-str (second lst))
-				    (rem-str (cddr lst)))
-			(cond ((null? rem-str)
-			       ;; (display "in null? dir-str: ")(echo dir-str)
-			       (when (directory? dir-str)
-				 (chdir dir-str))
-			       '())
-			      ((directory? dir-str)
-			       ;; (display "in dir? dir-str: ")(echo dir-str)
-			       (chdir (cadr lst)) (cdr rem-str))
-			      (else
-			       ;; (echo dir-str)
-			       (cd-loop
-				(string-append dir-str " " (car rem-str))
-				(cdr rem-str)))))))))
+  `(;; ("cd" . ,(lambda (lst)
+    ;; 	       (cond ((null? (cdr lst))
+    ;; 		      (chdir home-directory)
+    ;; 		      '())
+    ;; 		     ((string=? (second lst) "~/")
+    ;; 		      (begin (chdir home-directory)
+    ;; 			     (cddr lst)))
+    ;; 		     ((string=? (second lst) "")
+    ;; 		      (begin (chdir home-directory)
+    ;; 			     '()))
+    ;; 		     ((directory? (cadr lst))
+    ;; 		      (begin (chdir (cadr lst))
+    ;; 			     (cddr lst)))
+    ;; 		     (else
+    ;; 		      (let cd-loop ((dir-str (second lst))
+    ;; 				    (rem-str (cddr lst)))
+    ;; 			(cond ((null? rem-str)
+    ;; 			       ;; (display "in null? dir-str: ")(echo dir-str)
+    ;; 			       (when (directory? dir-str)
+    ;; 				 (chdir dir-str))
+    ;; 			       '())
+    ;; 			      ((directory? dir-str)
+    ;; 			       ;; (display "in dir? dir-str: ")(echo dir-str)
+    ;; 			       (chdir (cadr lst)) (cdr rem-str))
+    ;; 			      (else
+    ;; 			       ;; (echo dir-str)
+    ;; 			       (cd-loop
+    ;; 				(string-append dir-str " " (car rem-str))
+    ;; 				(cdr rem-str)))))))))
     ("exit" . ,(lambda (lst)
 		 (exit 0)))
     ("reload" . ,(lambda (lst)
@@ -233,6 +233,44 @@
 
 (define (define-builtin name lambda)
   (set! *builtins-alist* (cons `(,name . ,lambda) *builtins-alist*)))
+
+(define-builtin "cd"
+  (lambda (lst)
+    (let ((reter 
+	   (cond ((null? (cdr lst))
+		  (chdir home-directory)
+		  '())
+		 ((string=? (second lst) "~/")
+		  (begin (chdir home-directory)
+			 (cddr lst)))
+		 ((string=? (second lst) "")
+		  (begin (chdir home-directory)
+			 '()))
+		 ((directory? (cadr lst))
+		  (begin (chdir (cadr lst))
+			 (cddr lst)))
+		 (else
+		  (let cd-loop ((dir-str (second lst))
+				(rem-str (cddr lst)))
+		    (cond ((null? rem-str)
+			   ;; (display "in null? dir-str: ")(echo dir-str)
+			   (when (directory? dir-str)
+			     (chdir dir-str)
+			     '())
+			   '())
+			  ((directory? dir-str)
+			   ;; (display "in dir? dir-str: ")(echo dir-str)
+			   (chdir (cadr lst)) (cdr rem-str))
+			  (else
+			   ;; (echo dir-str)
+			   (cd-loop
+			    (string-append dir-str " " (car rem-str))
+			    (cdr rem-str)))))))))
+      (if (null? reter)
+	  '()
+	  (if (and (not (null? reter)) (string=? (car reter) "&&"))
+	      (cdr reter)
+	      reter)))))
 
 (define *directory-stack* '())
 
@@ -371,9 +409,7 @@ in the line (meaning the final space to the end of the line)"
 	  (car split-line-rev))
 	 (prev-word (if (< 1 (length split-line-rev))
 			(car (cdr split-line-rev))
-			#f))
-	 ;; (prev-word (second split-line-rev))
-	 )
+			#f)))
     (cond ((equal? start 0) 
 	   (set! *readline-generator-function* commands-completion-function)
 	   #t)
@@ -396,7 +432,12 @@ in the line (meaning the final space to the end of the line)"
 	   (set! *readline-generator-function* apropos-completion-function-test)
 	   #t)
 	  ((string=? prev-word "($")
-	   (set! *readline-generator-function* commands-completion-function))
+	   (set! *readline-generator-function* commands-completion-function)
+	   #t)
+	  ((string=? prev-word "sudo")
+	   ;; (echo "sudo")
+	   (set! *readline-generator-function* commands-completion-function)
+	   #t)
 	  (else #f))))
 
 (define (completer-for-alt text start end)
@@ -498,7 +539,8 @@ own readline function, or return #f.  "
 	  (else
 	   (when *history*
 	     (add-history-item prompt))
-	   (let* ((scheme-replaced
+	   (let* (;; (post-hook (run-hook 'parse-syntax-hook prompt))
+		  (scheme-replaced
 		   (string-app-list
 		    (eval/replace-scheme-string
 		     (extract-scheme-strings prompt))))
@@ -522,7 +564,6 @@ own readline function, or return #f.  "
       (cond ((equal? key 'quit)
 	     (exit))
 	    (else
-	     ;; (display "caught!\n")
 	     (if (and (not *suppress-error-messages-temp*)
 		      (not *suppress-error-messages*))
 		 (begin

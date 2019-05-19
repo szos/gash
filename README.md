@@ -6,7 +6,11 @@ GASH is a shell based on guile scheme. However, its not exactly a shell. Its mor
 
 ## Why Should I Care and/or Use GASH?
 
-Because its FUN! For basic shell usage, it works just fine, same as bash, except for completions following an opening paren complete guile. It lets you use scheme from the command line with a simple switch character to either things for side effects or splicing in text. The only place it really falls flat on its face is in completions on things with spaces in them. 
+Because its FUN! For basic shell usage, it works just fine, same as bash, except for completions following an opening paren complete guile. It lets you use scheme from the command line with a simple switch character to either things for side effects or splicing in text. The only place it really falls flat on its face is in completions on things with spaces in them.
+
+### An Example of GASH Extensibility
+
+Say we want to move up a directory and do something. Currently, we would write `cd .. somthing --to 'do'`, but we want to make it more clear by using `&&`. We will use `ls` as a standin for the command following cd. 
 
 ## Installation
 
@@ -62,10 +66,76 @@ GASH doesnt use the regular guile readline extension, instead building a similar
 
 There are a couple features we will be wanting in GASH. The following is an unordered list of wanted features. If you have an idea for implementing any of them, open a pull request.
 1. More meaningful shell interaction. Write better interaction functions between shell and guile. Since the § has augmented pipes so much, it seems only right to have a $, which runs a shell command, collecting its output. This functionality is already implemented in gash-base-lib as collect-shell-command, but could be improved and gussied up. For example, send the string send in through our parser for guile, in a mutually recursive manner, so we can do `§(fun $[echo '§(otherfun $[ls -al])'])` and have everything be expanded propperly. The prior syntax is only a suggestion.
-2. Build in user commands and a way to call them. I'm thinking build a readline command that prompts for the name of a command and then runs it. similar to M-x in emacs. 
+2. Build in user commands and a way to call them. I'm thinking build a readline command that prompts for the name of a command and then runs it. similar to M-x in emacs.
+
+### GASH as a main shell
+
+It would be nice to have GASH able to function as a normal shell, instead of accessorizing the users default shell. This can be accomplished with system*, and then parsing for various control structures with a modified string-split which takes a string for what to split on. it could also be done where pipes are split using string-split, and everything else is divided up and organized after tokenization based on spaces. 
 
 ## Issues and Quirks
 
 There are a couple quirks. Firstly, as GASH accessorizes the shell, and isnt itself a shell, there end up being some oddities with running it as your default shell. Since its not technically a shell, its not in /etc/shells, so you cant just set it as a default. Another way of launching it is to run `xterm -e /path/to/gash`.
 
 Another quirk is strings. When you switch to scheme mode, and call a shell command (generally via ($ "...")) you need to make sure to escape strings. Take this example call: `$ echo '§(format #f "~a" ($ "ls §(format #f "/home")"))'` This call will error out, due to misquoted strings. Because the inner format contains a string while being contained within a string, the inner string needs to be escaped, like so: `$ echo '§(format #f "~a" (sh "ls §(format #f \"/home\")"))'`.
+
+Another quirk is the `&&` and `||` logical operators. These MUST be preceded by an EXACT command and an EXACT command must follow. The text preceding and following these will be executed after forking. 
+
+## The Name and History
+
+This project was born from a simple desire - to be able to use format (and other scheme goodies) in the shell. The name was initially Guile Accessorizes the SHell, but I switched it to GASH Accessorizes the SHell. Either works though.
+
+## (not so) Current Development notes
+
+### Ideas for real shell functionality - &&, ||, and |
+
+Were going to basically split the line up by what we want to do logically. eg pipes, and, or, and those types of operations. This means we will need to have a hierarchy of how we divide things.
+
+Heres why:
+take this line:
+`do thing1 && do thing2 | thing3 || do thing 4`
+We want to parse for `|`, `&&`, and `||`, of which all 3 occur. `&&` and `||` control process execution, and `|` feeds process' into each other. We must ask ourselves a question, which do we parse for first? Another way we can ask this is 'How do we want to interpret this line'. We want to turn this line into:
+1. do thing1
+2. if do thing1 exited success, go to 3, otherwise go to 5
+3. pipe the output of running do thing2 into thing3
+4. were done, be done and exit this thingy
+5. do thing 4
+6. were done, be done and exit this thingy
+Because logical operators are different from redirection and pipes, we want to deal with our ands and ors first. lets deal with and (`&&`) first.
+
+we end up with
+`do thing1` `do thing2 | thing3 || do thing 4`
+so we parse for or (`||`) and end up with
+`do thing1` && `do thing2 | thing3` || `do thing 4`
+and then we parse for pipe (`|`)
+`do thing1` && `do thing2` | `thing3` || `do thing 4`
+which we can convert into lispy psudocode:
+(let ((thing1 (get-exit-status "do thing1")))
+  (if thing1
+      (let ((thing2 (pipe-x-into-y "do thing2" "thing3")))
+        (if thing2
+	    #t
+	    (get-exit-status "do thing 4")))))
+
+IDEA: we just need to get everything together like this after splitting it:
+'("command one and args" "&&" "command2 arg | command3 arg" "||" "command4")
+then we walk through it one by one, to generate a lambda or a series of lets. so we need to write it as a function. 
+
+Take the following line:
+`do thing1 || do thing2 | thing3 && do thing 4`
+same as above, we want to turn this line into:
+1. do thing1
+2. if do thing1 exited success, exit and were done, otherwise continue
+2a. do thing1 failed, so we want to
+3. pipe do thing2 into thing3
+4. if 3 returned success, do thing 4, otherwise,
+5. exit were done.
+
+lets run through this, starting with and (`&&`):
+`do thing1 || do thing2 | thing3` && `do thing 4`
+then parse for or (`||`)
+`do thing1` || `do thing2 | thing3` && `do thing 4`
+
+
+### Ideas for real shell functionality - redirection
+
+This is pretty easy. just writing to files. 

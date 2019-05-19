@@ -42,3 +42,14 @@ to the history list. "
 	    ;; (echo-color 1 "")
 	    (throw 'out-of-range "Within history-previous-entry: attempted to reference history item that doesnt exist")
 	    (list-ref contents num)))))
+
+(define *bash-history* '())
+(define *gash-history* '())
+(define *scheme-history* '())
+
+(define (add-bash-history text)
+  (set! *bash-history* (cons text *bash-history)))
+(define (add-gash-history text)
+  (set! *gash-history* (cons text *gash-history)))
+(define (add-scheme-history text)
+  (set! *scheme-history* (cons text *scheme-history)))

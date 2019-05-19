@@ -106,9 +106,16 @@
   ;; 			args))
   )
 
-(define (display-color color-number string)
-  "this is for terminal output, it prints a string in the specified 24bit color."
-  (system-fmt "printf '\\033[38;5;~Am~A\\033[0m'" color-number string))
+;; (define (display-color color-number string)
+;;   "this is for terminal output, it prints a string in the specified 24bit color."
+;;   (system-fmt "printf '\\033[38;5;~Am~A\\033[0m'" color-number string))
+
+(define-syntax display-color
+  (syntax-rules ()
+    ((display-color text)
+     (system-fmt (parse-string-for-color text)))
+    ((display-color color-number text)
+     (system-fmt "printf '\\033[38;5;~Am~A\\033[0m'" color-number text))))
 
 (define (echof string)
   (system-fmt "printf '~a\n'" (parse-string-for-color string)))
